@@ -8,10 +8,12 @@ import api from '../services/api';
 interface LayoutProps {
   children: React.ReactNode;
   role: 'student' | 'faculty' | 'admin';
+  pageTitle?: string;
 }
 export function Layout({
   children,
-  role
+  role,
+  pageTitle
 }: LayoutProps) {
   const { user } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -58,7 +60,7 @@ export function Layout({
               <Menu className="w-6 h-6" />
             </button>
             <h1 className="text-xl font-bold text-gray-900">
-              {getPageTitle()}
+              {pageTitle || getPageTitle()}
             </h1>
           </div>
 
@@ -109,7 +111,7 @@ export function Layout({
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto">{children}</div>
+          {children}
         </main>
       </div>
 

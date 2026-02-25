@@ -5,7 +5,8 @@ import { Button } from '../../components/ui/Button';
 import { Tabs } from '../../components/ui/Tabs';
 import { Table } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
-import { FileText, Download, Clock } from 'lucide-react';
+import { FolderCard } from '../../components/ui/FolderCard';
+import { FileText, Download, Clock, AlertTriangle } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import api from '../../services/api';
 import { FileUpload } from '../../components/ui/FileUpload';
@@ -88,8 +89,25 @@ export function CourseDetailsPage() {
     );
   }
 
+  const getAssignmentStatus = (item: any) => {
+    const submission = getSubmissionForAssignment(item._id);
+    if (submission) {
+      return submission.status === 'evaluated' || submission.status === 'Evaluated' ? 'Evaluated' : 'Submitted';
+    }
+    const now = new Date();
+    const due = new Date(item.dueDate);
+    if (now > due) return 'Failed';
+    return 'Pending';
+  };
+
+  const getStatusVariant = (status: string) => {
+    if (status === 'Failed') return 'danger';
+    if (status === 'Pending') return 'warning';
+    return 'success';
+  };
+
   return (
-    <Layout role="student">
+    <Layout role="student" pageTitle={course.title}>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">
           {course.title}
@@ -101,27 +119,17 @@ export function CourseDetailsPage() {
       <Tabs tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
 
       {activeTab === 'materials' && (
-        <div className="space-y-4 pt-4">
-          {materials.map(item => (
-            <Card key={item._id} className="flex items-center justify-between hover:shadow-md transition-shadow">
-              <div className="flex items-center space-x-4">
-                <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
-                  <FileText className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className="font-medium text-gray-900">{item.title}</h3>
-                  <p className="text-sm text-gray-500">
-                    {item.type?.toUpperCase()} • {new Date(item.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-              <a href={item.fileUrl} target="_blank" rel="noreferrer">
-                <Button variant="secondary" size="sm" icon={<Download className="w-4 h-4" />}>
-                  Download
-                </Button>
-              </a>
-            </Card>
-          ))}
+        <div className="pt-8">
+          <div className="grid grid-cols-5 gap-y-10 justify-items-center">
+            {materials.map(item => (
+              <FolderCard
+                key={item._id}
+                title={item.title}
+                subtitle={`${item.type?.toUpperCase() || 'FILE'} • ${new Date(item.createdAt).toLocaleDateString()}`}
+                fileUrl={item.fileUrl}
+              />
+            ))}
+          </div>
           {materials.length === 0 && <p className="text-gray-500">No study materials posted yet.</p>}
         </div>
       )}
@@ -130,31 +138,37 @@ export function CourseDetailsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
           {assignments.map(item => {
             const submission = getSubmissionForAssignment(item._id);
-            const isSubmitted = !!submission;
-            const status = isSubmitted ? (submission.status === 'Evaluated' || submission.status === 'evaluated' ? 'Evaluated' : 'Submitted') : 'Pending';
+            const status = getAssignmentStatus(item);
 
             return (
               <Card key={item._id} className="flex flex-col">
                 <div className="flex justify-between items-start mb-4">
-                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
-                    <FileText className="w-5 h-5" />
+                  <div className={`p-2 rounded-lg ${status === 'Failed' ? 'bg-red-50 text-red-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                    {status === 'Failed' ? <AlertTriangle className="w-5 h-5" /> : <FileText className="w-5 h-5" />}
                   </div>
-                  <Badge variant={status === 'Pending' ? 'warning' : 'success'}>
+                  <Badge variant={getStatusVariant(status)}>
                     {status}
                   </Badge>
                 </div>
                 <h3 className="font-bold text-gray-900 mb-2">{item.title}</h3>
                 {item.description && <p className="text-sm mb-4 text-gray-700">{item.description}</p>}
 
-                <div className="flex items-center text-sm text-gray-500 mb-6">
+                <div className="flex items-center text-sm text-gray-500 mb-4">
                   <Clock className="w-4 h-4 mr-2" />
                   Due: {new Date(item.dueDate).toLocaleDateString()}
                 </div>
+
+                {status === 'Failed' && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                    <p className="text-sm text-red-700 font-medium">Failed to submit the assignment on or before the due date</p>
+                  </div>
+                )}
+
                 <div className="mt-auto pt-4 border-t border-gray-100 flex justify-between items-center">
                   <span className="text-sm font-medium text-gray-600">
                     Score: {submission?.marks !== undefined ? `${submission.marks}` : '-'}
                   </span>
-                  {!isSubmitted ? (
+                  {status === 'Pending' ? (
                     <div className="flex flex-col w-full space-y-2">
                       <FileUpload
                         onFileSelect={(file) => handleFileUpload(item._id, file)}
@@ -162,16 +176,18 @@ export function CourseDetailsPage() {
                         label="Upload Submission"
                       />
                     </div>
+                  ) : status === 'Failed' ? (
+                    <span className="text-sm font-medium text-red-500">Overdue</span>
                   ) : (
                     <Button size="sm" variant="secondary" disabled>
-                      Submitted
+                      {status}
                     </Button>
                   )}
                 </div>
               </Card>
             );
           })}
-          {assignments.length === 0 && <p className="col-span-2 text-gray-500">No assignments posted up yet.</p>}
+          {assignments.length === 0 && <p className="col-span-2 text-gray-500">No assignments posted yet.</p>}
         </div>
       )}
 
@@ -186,14 +202,15 @@ export function CourseDetailsPage() {
                 { header: 'Due Date', accessor: (item: any) => new Date(item.dueDate).toLocaleDateString() },
                 {
                   header: 'Status', accessor: (item: any) => {
-                    const sub = getSubmissionForAssignment(item._id);
-                    const status = sub ? (sub.status === 'Evaluated' || sub.status === 'evaluated' ? 'Evaluated' : 'Submitted') : 'Pending';
-                    return <Badge variant={status === 'Pending' ? 'warning' : 'success'}>{status}</Badge>;
+                    const status = getAssignmentStatus(item);
+                    return <Badge variant={getStatusVariant(status)}>{status}</Badge>;
                   }
                 },
                 {
                   header: 'Score', accessor: (item: any) => {
                     const sub = getSubmissionForAssignment(item._id);
+                    const status = getAssignmentStatus(item);
+                    if (status === 'Failed') return <span className="text-red-500 text-sm">Failed</span>;
                     return sub?.marks !== undefined ? sub.marks : '-';
                   }
                 }

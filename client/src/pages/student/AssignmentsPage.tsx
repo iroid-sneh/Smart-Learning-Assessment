@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { Modal } from '../../components/ui/Modal';
 import { FileUpload } from '../../components/ui/FileUpload';
-import { Clock, CheckCircle } from 'lucide-react';
+import { Clock, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 
@@ -106,8 +106,9 @@ export function AssignmentsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {assignments.map(item => {
           const submission = submissions.find(s => s.assignment?._id === item._id || s.assignment === item._id);
-          const status = submission ? 'Submitted' : 'Pending';
           const daysLeft = getDaysLeft(item.dueDate);
+          const isOverdue = !submission && daysLeft <= 0;
+          const status = submission ? 'Submitted' : isOverdue ? 'Failed' : 'Pending';
 
           return (
             <Card key={item._id} className="flex flex-col">
@@ -120,12 +121,12 @@ export function AssignmentsPage() {
                     {item.title}
                   </h3>
                 </div>
-                <Badge variant={status === 'Submitted' ? 'success' : 'warning'}>
+                <Badge variant={status === 'Submitted' ? 'success' : status === 'Failed' ? 'danger' : 'warning'}>
                   {status}
                 </Badge>
               </div>
 
-              <div className="flex items-center space-x-4 text-sm text-gray-500 mb-6">
+              <div className="flex items-center space-x-4 text-sm text-gray-500 mb-4">
                 <div className="flex items-center">
                   <Clock className="w-4 h-4 mr-1.5" />
                   Due: {new Date(item.dueDate).toLocaleDateString()}
@@ -135,13 +136,31 @@ export function AssignmentsPage() {
                 </span>}
               </div>
 
+              {status === 'Failed' && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                    <p className="text-sm text-red-700 font-medium">Failed to submit the assignment on or before the due date</p>
+                  </div>
+                </div>
+              )}
+
               <div className="mt-auto pt-4 border-t border-gray-100">
-                {status === 'Pending' ? <Button className="w-full" onClick={() => handleSubmitClick(item)}>
-                  Submit Assignment
-                </Button> : <div className="flex items-center justify-center text-green-600 font-medium py-2 bg-green-50 rounded-lg">
-                  <CheckCircle className="w-5 h-5 mr-2" />
-                  Submitted Successfully
-                </div>}
+                {status === 'Pending' ? (
+                  <Button className="w-full" onClick={() => handleSubmitClick(item)}>
+                    Submit Assignment
+                  </Button>
+                ) : status === 'Failed' ? (
+                  <div className="flex items-center justify-center text-red-600 font-medium py-2 bg-red-50 rounded-lg">
+                    <AlertTriangle className="w-5 h-5 mr-2" />
+                    Submission Closed
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center text-green-600 font-medium py-2 bg-green-50 rounded-lg">
+                    <CheckCircle className="w-5 h-5 mr-2" />
+                    Submitted Successfully
+                  </div>
+                )}
               </div>
             </Card>
           )
