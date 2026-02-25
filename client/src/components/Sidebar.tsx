@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, BookOpen, FileText, BarChart2, Users, Settings, LogOut, GraduationCap, Megaphone } from 'lucide-react';
+import { motion } from 'framer-motion';
 interface SidebarProps {
   role: 'student' | 'faculty' | 'admin';
   onCloseMobile?: () => void;
@@ -10,6 +11,7 @@ export function Sidebar({
   onCloseMobile
 }: SidebarProps) {
   const location = useLocation();
+  const [hoveredPath, setHoveredPath] = useState<string | null>(null);
   const links = {
     student: [{
       name: 'Dashboard',
@@ -87,16 +89,27 @@ export function Sidebar({
       </div>
     </div>
 
-    <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+    <nav className="flex-1 px-6 py-6 space-y-1 overflow-y-auto">
       {currentLinks.map(link => {
         const isActive = location.pathname === link.path || location.pathname.startsWith(link.path + '/');
-        const Icon = link.icon;
+        const showLine = isActive || hoveredPath === link.path;
         return <Link key={link.path} to={link.path} onClick={onCloseMobile} className={`
-                flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200
-                ${isActive ? 'bg-blue-600 text-white shadow-md shadow-blue-200' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}
-              `}>
-          <Icon className={`w-5 h-5 mr-3 ${isActive ? 'text-white' : 'text-gray-400'}`} />
-          {link.name}
+                group relative flex items-center py-3 text-[16px] font-medium transition-colors duration-200
+                ${isActive ? 'text-gray-900' : 'text-gray-500 hover:text-gray-800'}
+              `}
+          onMouseEnter={() => setHoveredPath(link.path)}
+          onMouseLeave={() => setHoveredPath(null)}>
+          <span className="relative leading-none">
+            {link.name}
+            <motion.span
+              className="absolute left-0 -bottom-1 h-[2px] bg-gray-900 rounded-full"
+              animate={{
+                width: showLine ? '100%' : '0%',
+                opacity: showLine ? 1 : 0
+              }}
+              transition={{ type: 'spring', bounce: 0.2, duration: 0.35 }}
+            />
+          </span>
         </Link>;
       })}
     </nav>

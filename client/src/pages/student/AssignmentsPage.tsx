@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Layout } from '../../components/Layout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -103,37 +103,60 @@ export function AssignmentsPage() {
 
   return (
     <Layout role="student">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {assignments.map(item => {
           const submission = submissions.find(s => s.assignment?._id === item._id || s.assignment === item._id);
           const daysLeft = getDaysLeft(item.dueDate);
           const isOverdue = !submission && daysLeft <= 0;
           const status = submission ? 'Submitted' : isOverdue ? 'Failed' : 'Pending';
+          const accentColor = status === 'Failed' ? 'text-red-600' : 'text-emerald-700';
 
           return (
-            <Card key={item._id} className="flex flex-col">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <p className="text-sm font-medium text-blue-600 mb-1">
+            <Card key={item._id} className="group flex flex-col">
+              <div className="mb-4">
+                <div className="flex justify-between items-start gap-3 mb-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                     {item.courseTitle}
                   </p>
-                  <h3 className="text-lg font-bold text-gray-900">
-                    {item.title}
-                  </h3>
+                  <Badge variant={status === 'Submitted' ? 'success' : status === 'Failed' ? 'danger' : 'warning'}>
+                    {status}
+                  </Badge>
                 </div>
-                <Badge variant={status === 'Submitted' ? 'success' : status === 'Failed' ? 'danger' : 'warning'}>
-                  {status}
-                </Badge>
+                <h3 className="text-lg font-bold text-gray-900 leading-tight">{item.title}</h3>
+                {item.description && (
+                  <p className="text-sm text-gray-600 mt-1 line-clamp-2">{item.description}</p>
+                )}
+                <div className="flex items-center space-x-4 text-sm text-gray-500 mt-3">
+                  <div className="flex items-center">
+                    <Clock className="w-4 h-4 mr-1.5" />
+                    Due: {new Date(item.dueDate).toLocaleDateString()}
+                  </div>
+                  {status === 'Pending' && (
+                    <span className={`font-medium ${daysLeft < 3 ? 'text-red-500' : 'text-orange-500'}`}>
+                      {daysLeft > 0 ? `${daysLeft} days left` : 'Overdue'}
+                    </span>
+                  )}
+                </div>
               </div>
 
-              <div className="flex items-center space-x-4 text-sm text-gray-500 mb-4">
-                <div className="flex items-center">
-                  <Clock className="w-4 h-4 mr-1.5" />
-                  Due: {new Date(item.dueDate).toLocaleDateString()}
+              <div className="relative h-[290px] mb-5 overflow-visible">
+                <div className="absolute right-2 top-6 h-[250px] w-[72%] rounded-xl bg-red-600 shadow-md rotate-[6deg] transition-all duration-300 group-hover:rotate-[4deg] group-hover:translate-x-1">
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 rotate-90 text-[11px] font-bold tracking-wide text-white">
+                    CLICK TO READ
+                  </span>
                 </div>
-                {status === 'Pending' && <span className={`font-medium ${daysLeft < 3 ? 'text-red-500' : 'text-orange-500'}`}>
-                  {daysLeft > 0 ? `${daysLeft} days left` : 'Overdue'}
-                </span>}
+                <div className="absolute right-8 top-3 h-[250px] w-[82%] rounded-xl bg-gray-100 border border-gray-200 opacity-80 shadow-sm transition-all duration-300 group-hover:translate-x-1">
+                  <div className="p-4 text-xs text-gray-400">Assignment Preview</div>
+                </div>
+                <div className="relative z-10 h-[260px] w-[86%] rounded-2xl border border-gray-200 bg-[#edf1ef] p-6 shadow-sm transition-all duration-300 group-hover:-rotate-[3deg] group-hover:-translate-x-1">
+                  <p className="text-[11px] font-semibold tracking-wide uppercase text-gray-400">Assignment</p>
+                  <h4 className={`text-[38px] leading-[1.05] font-semibold mt-3 ${accentColor}`}>
+                    {item.title.length > 62 ? `${item.title.slice(0, 62)}...` : item.title}
+                  </h4>
+                  <div className="mt-auto pt-8">
+                    <p className={`text-sm font-semibold ${accentColor}`}>{item.courseTitle}</p>
+                  </div>
+                </div>
               </div>
 
               {status === 'Failed' && (
