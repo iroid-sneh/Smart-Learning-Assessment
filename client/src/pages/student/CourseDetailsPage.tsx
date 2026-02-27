@@ -180,63 +180,10 @@ const AssignmentCard = ({
 
                     {/* Floating Background Assets */}
                     {theme === "red" && (
-                        <div className="absolute inset-0 pointer-events-none z-0">
-                            <img
-                                src="https://framerusercontent.com/images/2PmD2a8aZpqpwXR4oh6GLdBuGF4.jpg"
-                                alt="Asset 1"
-                                className="absolute right-[40px] top-[120px] w-[90px] h-[70px] object-cover rounded shadow-md border border-white/50"
-                            />
-                            <img
-                                src="https://framerusercontent.com/images/XRtn6dfktsxy35NgqRIPhTASUw.jpg"
-                                alt="Asset 2"
-                                className="absolute right-[20px] top-[210px] w-[45px] h-[75px] object-cover rounded shadow-md border border-white/50"
-                            />
-                            <img
-                                src="https://framerusercontent.com/images/La72ICnSDhn2r9An5ZNP6L1g.jpg"
-                                alt="Asset 3"
-                                className="absolute right-[50px] bottom-[150px] w-[40px] h-[50px] object-cover rounded shadow-md border border-white/50"
-                            />
-                        </div>
+                        <div className="absolute inset-0 pointer-events-none z-0"></div>
                     )}
                     {theme === "green" && (
-                        <div className="absolute inset-0 pointer-events-none z-0">
-                            <div className="absolute bottom-[130px] right-[25px] flex items-end gap-2">
-                                <div className="w-[30px] h-[45px] bg-[#C2DFD3] rounded-sm" />
-                                <div className="w-[30px] h-[70px] bg-[#C2DFD3] rounded-sm" />
-                                <div className="w-[30px] h-[100px] bg-[#C2DFD3] rounded-sm" />
-                                <div className="w-[30px] h-[150px] bg-[#C2DFD3] rounded-sm" />
-                            </div>
-                            <svg
-                                className="absolute -left-6 top-[130px] w-[50px] h-[50px] rotate-[15deg] opacity-90"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                            >
-                                <path
-                                    d="M12 2C12 2 3 7 3 14C3 18 6 21 12 22C18 21 21 18 21 14C21 7 12 2 12 2Z"
-                                    fill="#58A546"
-                                />
-                                <path
-                                    d="M12 22V2"
-                                    stroke="#3D7E2E"
-                                    strokeWidth="1.5"
-                                />
-                            </svg>
-                            <svg
-                                className="absolute right-[120px] top-[190px] w-[35px] h-[35px] -rotate-[30deg] opacity-90"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                            >
-                                <path
-                                    d="M12 2C12 2 3 7 3 14C3 18 6 21 12 22C18 21 21 18 21 14C21 7 12 2 12 2Z"
-                                    fill="#58A546"
-                                />
-                                <path
-                                    d="M12 22V2"
-                                    stroke="#3D7E2E"
-                                    strokeWidth="1.5"
-                                />
-                            </svg>
-                        </div>
+                        <div className="absolute inset-0 pointer-events-none z-0"></div>
                     )}
                     {theme === "blue" && (
                         <div className="absolute inset-0 pointer-events-none z-0 opacity-20 bg-[radial-gradient(circle_at_100%_100%,_#2A6EC6_0%,_transparent_60%)]" />
