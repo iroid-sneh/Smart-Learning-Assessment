@@ -47,21 +47,30 @@ export function Layout({
       {isSidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setIsSidebarOpen(false)} />}
 
       <div className={`
-        fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out
+        fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200/80 transform transition-transform duration-200 ease-in-out
         ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         <Sidebar role={role} onCloseMobile={() => setIsSidebarOpen(false)} />
       </div>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center">
+        <header className="bg-white/95 backdrop-blur border-b border-gray-200/80 h-16 flex items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-3">
             <button onClick={() => setIsSidebarOpen(true)} className="lg:hidden p-2 -ml-2 mr-2 text-gray-600 hover:bg-gray-100 rounded-md">
               <Menu className="w-6 h-6" />
             </button>
             <h1 className="text-xl font-bold text-gray-900">
               {pageTitle || getPageTitle()}
             </h1>
+            <div className="hidden xl:flex items-center ml-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search"
+                  className="w-72 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center space-x-4">

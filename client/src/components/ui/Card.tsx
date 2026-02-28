@@ -10,7 +10,7 @@ export function Card({
   noPadding = false,
   ...props
 }: CardProps) {
-  return <div className={`bg-white rounded-xl shadow-lg border border-gray-100 ${noPadding ? '' : 'p-6'} ${className}`} {...props}>
+  return <div className={`bg-white rounded-2xl border border-gray-200/70 shadow-sm hover:shadow-md transition-shadow duration-200 ${noPadding ? '' : 'p-6'} ${className}`} {...props}>
       {children}
     </div>;
 }

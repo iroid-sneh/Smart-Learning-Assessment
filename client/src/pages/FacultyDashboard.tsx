@@ -75,16 +75,22 @@ export function FacultyDashboard() {
 
   return (
     <Layout role="faculty">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="mb-7">
+        <h2 className="text-2xl font-semibold text-gray-900">Faculty Overview</h2>
+        <p className="text-sm text-gray-500 mt-1">Manage your classes, assignment flow, and student activity.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
         <StatCard icon={BookOpen} label="Total Courses" value={courses.length.toString()} color="blue" />
         <StatCard icon={Users} label="Total Students" value={studentsCount.toString()} color="green" />
         <StatCard icon={FileText} label="Total Assignments" value={assignments.length.toString()} color="orange" />
         <StatCard icon={Clock} label="Pending Evaluations" value={pendingCount.toString()} color="purple" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-8">
-          <Card title="Quick Actions">
+          <Card>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
             <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
               <Link to="/faculty/evaluation"><Button variant="outline" className="w-full">Evaluate Submissions</Button></Link>
               <Link to="/faculty/materials"><Button variant="outline" className="w-full">Add Materials</Button></Link>
@@ -93,9 +99,9 @@ export function FacultyDashboard() {
             </div>
           </Card>
 
-          <Card title="My Courses">
+          <Card>
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-gray-900">My Courses</h3>
+              <h3 className="text-lg font-semibold text-gray-900">My Courses</h3>
               <Link to="/faculty/courses">
                 <Button variant="ghost" size="sm">Manage</Button>
               </Link>
@@ -118,7 +124,7 @@ export function FacultyDashboard() {
         <div className="space-y-8">
           <Card className="h-full">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-gray-900">Announcements</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Announcements</h3>
               <Bell className="w-5 h-5 text-gray-400" />
             </div>
             <div className="space-y-6">
@@ -137,6 +143,43 @@ export function FacultyDashboard() {
             </div>
           </Card>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
+        <Card className="xl:col-span-2">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">Submission Analytics</h3>
+            <span className="text-xs font-semibold text-blue-600">Last 7 days</span>
+          </div>
+          <div className="grid grid-cols-8 gap-2 items-end h-44">
+            {[42, 70, 55, 60, 82, 66, 58, 76].map((h, idx) => (
+              <div key={idx} className="rounded-md bg-blue-100 h-full flex items-end">
+                <div className="w-full rounded-md bg-blue-600" style={{ height: `${h}%` }} />
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Evaluation Status</h3>
+          <div className="space-y-3">
+            {[
+              { label: 'Pending', value: pendingCount, color: 'bg-amber-500' },
+              { label: 'Completed', value: Math.max(0, assignments.length - pendingCount), color: 'bg-emerald-500' },
+              { label: 'Total', value: assignments.length, color: 'bg-blue-500' }
+            ].map((row) => (
+              <div key={row.label}>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="text-gray-700">{row.label}</span>
+                  <span className="font-semibold text-gray-900">{row.value}</span>
+                </div>
+                <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div className={`h-full ${row.color}`} style={{ width: `${Math.min(100, assignments.length ? (row.value / assignments.length) * 100 : 0)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
 
       <Modal isOpen={!!selectedAnnouncement} onClose={() => setSelectedAnnouncement(null)} title={selectedAnnouncement?.title || 'Announcement'}>

@@ -42,16 +42,22 @@ export function AdminDashboard() {
 
   return (
     <Layout role="admin">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="mb-7">
+        <h2 className="text-2xl font-semibold text-gray-900">Admin Control Center</h2>
+        <p className="text-sm text-gray-500 mt-1">Monitor platform operations, users, and system-wide activities.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
         <StatCard icon={Users} label="Total Students" value={totalStudents.toString()} color="blue" />
         <StatCard icon={Users} label="Faculty Members" value={totalFaculty.toString()} color="green" />
         <StatCard icon={BookOpen} label="Total Courses" value={courses.length.toString()} color="purple" />
         <StatCard icon={TrendingUp} label="Platform Usage" value="98%" color="orange" trend="Stable" trendUp={true} />
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2 space-y-8">
-          <Card title="System Overview">
+          <Card>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">System Overview</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 flex items-center justify-between">
                 <div>
@@ -73,7 +79,7 @@ export function AdminDashboard() {
               </div>
             </div>
 
-            <h3 className="text-lg font-bold text-gray-900 mt-8 mb-4">Quick Actions</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mt-8 mb-4">Quick Actions</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <Link to="/admin/courses">
                 <Button variant="outline" className="h-auto w-full py-4 flex flex-col items-center gap-2">
@@ -102,7 +108,8 @@ export function AdminDashboard() {
         </div>
 
         <div className="space-y-8">
-          <Card title="Recent Announcements">
+          <Card>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Announcements</h3>
             <div className="space-y-4">
               {announcements.map((item) => (
                 <div key={item._id} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
@@ -122,6 +129,89 @@ export function AdminDashboard() {
             </Link>
           </Card>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
+        <Card className="xl:col-span-2">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-lg font-semibold text-gray-900">Transactions</h3>
+            <span className="text-xs text-gray-500">Latest activity</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs font-semibold uppercase tracking-wide text-gray-500 border-b border-gray-200">
+                  <th className="py-2 pr-4">Transaction</th>
+                  <th className="py-2 pr-4">Date</th>
+                  <th className="py-2 pr-4">Amount</th>
+                  <th className="py-2 pr-4">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {[{
+                  name: 'Payment from Bonnie Green',
+                  date: 'Apr 23, 2021',
+                  amount: '$2300',
+                  status: 'Completed',
+                  badge: 'bg-emerald-100 text-emerald-700'
+                }, {
+                  name: 'Payment refund to #00910',
+                  date: 'Apr 23, 2021',
+                  amount: '-$670',
+                  status: 'Cancelled',
+                  badge: 'bg-red-100 text-red-700'
+                }, {
+                  name: 'Payment from Jese Leos',
+                  date: 'Apr 15, 2021',
+                  amount: '$2300',
+                  status: 'In review',
+                  badge: 'bg-violet-100 text-violet-700'
+                }, {
+                  name: 'Payment from Lana Byrd',
+                  date: 'Apr 15, 2021',
+                  amount: '$5000',
+                  status: 'In progress',
+                  badge: 'bg-amber-100 text-amber-700'
+                }].map((row) => (
+                  <tr key={row.name} className="text-gray-700">
+                    <td className="py-3 pr-4 font-medium">{row.name}</td>
+                    <td className="py-3 pr-4">{row.date}</td>
+                    <td className="py-3 pr-4 font-semibold text-gray-900">{row.amount}</td>
+                    <td className="py-3 pr-4">
+                      <span className={`text-xs font-semibold px-2 py-1 rounded-full ${row.badge}`}>{row.status}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        <Card>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Traffic by Device</h3>
+            <span className="text-xs font-semibold text-blue-600">Full report</span>
+          </div>
+          <div className="mx-auto w-48 h-48 rounded-full" style={{
+            background: 'conic-gradient(#06b6d4 0 72%, #1d4ed8 72% 92%, #fdba74 92% 100%)'
+          }}>
+            <div className="w-28 h-28 bg-white rounded-full mx-auto relative top-10"></div>
+          </div>
+          <div className="grid grid-cols-3 gap-3 mt-6 text-sm">
+            <div>
+              <p className="text-gray-500">Desktop</p>
+              <p className="font-bold text-gray-900">234k</p>
+            </div>
+            <div>
+              <p className="text-gray-500">Phone</p>
+              <p className="font-bold text-gray-900">94k</p>
+            </div>
+            <div>
+              <p className="text-gray-500">Tablet</p>
+              <p className="font-bold text-gray-900">16k</p>
+            </div>
+          </div>
+        </Card>
       </div>
     </Layout>
   );

@@ -42,7 +42,12 @@ export function StudentDashboard() {
 
   return (
     <Layout role="student">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="mb-7">
+        <h2 className="text-2xl font-semibold text-gray-900">Welcome back, {user?.name?.split(' ')[0] || 'Student'}</h2>
+        <p className="text-sm text-gray-500 mt-1">Track your coursework, progress, and latest updates in one place.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
         <StatCard icon={BookOpen} label="Enrolled Courses" value={courses.length.toString() || "0"} color="blue" />
         <StatCard icon={FileText} label="Pending Assignments" value={((progress?.totalAssignments || 0) - (progress?.submittedAssignments || 0)).toString()} color="orange" />
         <StatCard icon={CheckCircle} label="Completed" value={progress?.evaluatedAssignments?.toString() || "0"} color="green" />
@@ -56,12 +61,12 @@ export function StudentDashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-8">
           {/* Recent Activity / Progress */}
-          <Card title="Recent Activity">
+          <Card>
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-gray-900">Current Courses</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Current Courses</h3>
               <Link to="/student/courses">
                 <Button variant="ghost" size="sm">View All</Button>
               </Link>
@@ -85,7 +90,7 @@ export function StudentDashboard() {
           {/* Upcoming Assignments */}
           <Card>
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-gray-900">Upcoming Deadlines</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Upcoming Deadlines</h3>
               <Link to="/student/assignments">
                 <Button variant="ghost" size="sm">View All</Button>
               </Link>
@@ -99,7 +104,7 @@ export function StudentDashboard() {
         <div className="space-y-8">
           <Card className="h-full">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-gray-900">Announcements</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Announcements</h3>
               <Bell className="w-5 h-5 text-gray-400" />
             </div>
             <div className="space-y-6">
@@ -118,6 +123,50 @@ export function StudentDashboard() {
             </div>
           </Card>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
+        <Card className="xl:col-span-2">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-gray-900">Learning Progress Snapshot</h3>
+            <span className="text-xs font-semibold text-blue-600">Last 30 days</span>
+          </div>
+          <div className="space-y-4">
+            {[
+              { label: 'Assignments Submitted', value: progress?.submittedAssignments || 0, total: progress?.totalAssignments || 1 },
+              { label: 'Assignments Evaluated', value: progress?.evaluatedAssignments || 0, total: progress?.totalAssignments || 1 },
+              { label: 'Average Score', value: progress?.averageMarks || 0, total: 100 }
+            ].map((row) => {
+              const pct = Math.max(0, Math.min(100, Math.round((row.value / row.total) * 100)));
+              return (
+                <div key={row.label}>
+                  <div className="flex justify-between text-sm mb-1.5">
+                    <span className="text-gray-700 font-medium">{row.label}</span>
+                    <span className="text-gray-500">{pct}%</span>
+                  </div>
+                  <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+
+        <Card>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Distribution</h3>
+          <div className="space-y-3">
+            {courses.slice(0, 4).map((course, index) => (
+              <div key={course._id || index} className="flex items-center justify-between text-sm">
+                <span className="text-gray-700 truncate mr-3">{course.title}</span>
+                <span className="inline-flex h-2.5 w-24 rounded-full bg-gray-100 overflow-hidden">
+                  <span className="h-full bg-blue-600" style={{ width: `${70 + index * 7}%` }} />
+                </span>
+              </div>
+            ))}
+            {courses.length === 0 && <p className="text-sm text-gray-500">No course data yet.</p>}
+          </div>
+        </Card>
       </div>
 
       <Modal isOpen={!!selectedAnnouncement} onClose={() => setSelectedAnnouncement(null)} title={selectedAnnouncement?.title || 'Announcement'}>

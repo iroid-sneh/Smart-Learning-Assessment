@@ -21,6 +21,11 @@ const PORT = process.env.PORT || 5001;
 mongoConnection();
 
 const __dirname = import.meta.dirname;
+const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000);
+const RATE_LIMIT_MAX_REQUESTS = Number(process.env.RATE_LIMIT_MAX_REQUESTS || 5000);
+
+// Required when running behind a proxy/load balancer so IP detection is correct.
+app.set("trust proxy", 1);
 
 // Security Middlewares
 app.use(helmet());
@@ -32,9 +37,11 @@ app.use(cors({
 
 // Rate limiting (Global, but we could make a specific one for auth)
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 200, // Limit each IP to 200 requests per `window` (here, per 15 minutes)
-    message: "Too many requests from this IP, please try again after 15 minutes",
+    windowMs: RATE_LIMIT_WINDOW_MS,
+    max: RATE_LIMIT_MAX_REQUESTS,
+    message: `Too many requests from this IP, please try again after ${Math.round(
+        RATE_LIMIT_WINDOW_MS / 60000
+    )} minutes`,
     standardHeaders: true,
     legacyHeaders: false,
 });
