@@ -1,0 +1,21 @@
+<%- include('layout', { title: 'New Assignment Posted' , heading: 'New Assignment Available' , body: ` An instructor has
+    just posted a new assignment for your course <strong>${courseTitle}</strong>. Please review the details below:
+
+    <table class="data-table">
+        <tr>
+            <td class="data-label">Assignment</td>
+            <td><strong>${assignmentTitle}</strong></td>
+        </tr>
+        <tr>
+            <td class="data-label">Due Date</td>
+            <td style="color: #e11d48; font-weight: 600;">${dueDate}</td>
+        </tr>
+    </table>
+
+    <p style="margin-top: 20px; font-size: 14px; color: #64748b;">
+        Log in to the Academic Hub portal to view the full instructions and download any required materials.
+        <br><br>
+        <em>Please ensure you submit your work before the deadline to avoid late penalties.</em>
+    </p>
+    `
+    }) %>

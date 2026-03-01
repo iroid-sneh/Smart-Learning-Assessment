@@ -1,6 +1,8 @@
 import Assignment from "../../models/assignment.js";
 import Course from "../../models/course.js";
+import User from "../../models/user.js";
 import { BadRequestException, NotFoundException, ForbiddenException } from "../common/utils/errorException.js";
+import sendMail from "../common/middleware/sendMail.js";
 
 class assignmentServices {
     static async createAssignment(courseId, data, user) {
@@ -20,9 +22,31 @@ class assignmentServices {
 
         const assignment = await Assignment.create({
             ...data,
-            course: courseId,
+            course: id,
             createdBy: user._id,
         });
+
+        const studentUsers = await User.find({
+            _id: { $in: course.students || [] },
+            role: "student",
+        }).select("email");
+
+        if (studentUsers.length > 0) {
+            try {
+                await sendMail(
+                    {
+                        to: studentUsers.map((s) => s.email),
+                        subject: `New assignment in ${course.title}`,
+                        courseTitle: course.title,
+                        assignmentTitle: assignment.title,
+                        dueDate: new Date(assignment.dueDate).toLocaleDateString(),
+                    },
+                    "assigment"
+                );
+            } catch (mailError) {
+                console.error("Assignment email failed:", mailError.message);
+            }
+        }
 
         return {
             success: true,

@@ -1,0 +1,18 @@
+<%- include('layout', { title: 'Assignment Evaluated' , heading: 'Your results are ready' , body: ` Your assignment for
+    <strong>${courseTitle}</strong> has been graded by your instructor.
+    <table class="data-table">
+        <tr>
+            <td class="data-label">Assignment</td>
+            <td>${assignmentTitle}</td>
+        </tr>
+        <tr>
+            <td class="data-label">Score</td>
+            <td><span style="font-size: 18px; color: #0f172a; font-weight: 700;">${marks}/100</span></td>
+        </tr>
+        <tr>
+            <td class="data-label">Feedback</td>
+            <td style="font-style: italic;">"${feedback || 'No specific feedback provided.'}"</td>
+        </tr>
+    </table>
+    `
+    }) %>

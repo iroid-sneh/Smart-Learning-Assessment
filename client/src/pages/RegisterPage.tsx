@@ -40,7 +40,7 @@ export function RegisterPage() {
       });
 
       if (res.data.success) {
-        navigate('/login');
+        navigate('/verify-otp', { state: { email: formData.email } });
       }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.');

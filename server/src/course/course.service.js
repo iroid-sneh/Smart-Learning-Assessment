@@ -1,20 +1,35 @@
 import Course from "../../models/course.js";
+import User from "../../models/user.js";
 import { BadRequestException, NotFoundException, ForbiddenException } from "../common/utils/errorException.js";
+import sendMail from "../common/middleware/sendMail.js";
 
 class courseServices {
     static async createCourse(data, user) {
-        const { title, code, description } = data;
+        const { title, code, description, faculty } = data;
 
         const existingCourse = await Course.findOne({ code: code.toUpperCase() });
         if (existingCourse) {
             throw new BadRequestException("Course code already exists");
         }
 
+        let assignedFacultyId = user._id;
+        if (faculty) {
+            const selectedFaculty = await User.findOne({
+                _id: faculty,
+                role: "faculty",
+            }).select("_id");
+
+            if (!selectedFaculty) {
+                throw new BadRequestException("Selected faculty is invalid");
+            }
+            assignedFacultyId = selectedFaculty._id;
+        }
+
         const course = await Course.create({
             title,
             code: code.toUpperCase(),
             description,
-            faculty: user._id,
+            faculty: assignedFacultyId,
         });
 
         return {
@@ -63,6 +78,8 @@ class courseServices {
             throw new NotFoundException("Course not found");
         }
 
+        const previousStudentIds = (course.students || []).map((id) => id.toString());
+
         if (course.faculty.toString() !== user._id.toString() && user.role !== "admin") {
             throw new ForbiddenException("Not authorized to update this course");
         }
@@ -78,10 +95,48 @@ class courseServices {
             data.code = data.code.toUpperCase();
         }
 
+        if (data.students && Array.isArray(data.students)) {
+            data.students = [...new Set(data.students.map((id) => id.toString()))];
+        }
+
         const updatedCourse = await Course.findByIdAndUpdate(courseId, data, {
             new: true,
             runValidators: true,
         }).populate("faculty", "name email");
+
+        if (Array.isArray(data.students)) {
+            const updatedStudentIds = (updatedCourse.students || []).map((id) =>
+                id.toString()
+            );
+            const addedStudentIds = updatedStudentIds.filter(
+                (id) => !previousStudentIds.includes(id)
+            );
+
+            if (addedStudentIds.length > 0) {
+                const addedStudents = await User.find({
+                    _id: { $in: addedStudentIds },
+                    role: "student",
+                }).select("email");
+
+                if (addedStudents.length > 0) {
+                    try {
+                        await sendMail(
+                            {
+                                to: addedStudents.map((s) => s.email),
+                                subject: `Course enrollment: ${updatedCourse.title}`,
+                                courseTitle: updatedCourse.title,
+                                facultyName:
+                                    updatedCourse.faculty?.name || "Faculty",
+                                semester: "Current",
+                            },
+                            "course-enrollment"
+                        );
+                    } catch (mailError) {
+                        console.error("Enrollment email failed:", mailError.message);
+                    }
+                }
+            }
+        }
 
         return {
             success: true,

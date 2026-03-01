@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+        <%= title %>
+    </title>
+    <!-- Import Modern Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f8fafc;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #1e293b;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .wrapper {
+            width: 100%;
+            table-layout: fixed;
+            background-color: #f8fafc;
+            padding-bottom: 40px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+        }
+
+        .header-accent {
+            height: 6px;
+            background: linear-gradient(90deg, #0f172a 0%, #334155 100%);
+        }
+
+        .content {
+            padding: 40px 50px;
+        }
+
+        .logo {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            color: #0f172a;
+            margin-bottom: 30px;
+        }
+
+        .logo span {
+            color: #64748b;
+            font-weight: 400;
+        }
+
+        .title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 16px;
+            line-height: 1.2;
+        }
+
+        .text {
+            font-size: 16px;
+            line-height: 1.6;
+            color: #475569;
+            margin-bottom: 24px;
+        }
+
+        /* Components */
+        .otp-container {
+            text-align: center;
+            margin: 32px 0;
+            padding: 24px;
+            background-color: #f1f5f9;
+            border-radius: 12px;
+        }
+
+        .otp-box {
+            display: inline-block;
+            font-family: 'Courier New', monospace;
+            font-size: 36px;
+            font-weight: 700;
+            letter-spacing: 8px;
+            color: #0f172a;
+            padding-left: 8px;
+            /* Offset for letter spacing */
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: #f8fafc;
+            border-radius: 8px;
+        }
+
+        .data-table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 14px;
+        }
+
+        .data-label {
+            font-weight: 600;
+            color: #64748b;
+            width: 30%;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 0 50px 40px;
+            font-size: 13px;
+            color: #94a3b8;
+            line-height: 1.5;
+        }
+
+        .footer hr {
+            border: 0;
+            border-top: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+        }
+
+        /* Responsive */
+        @media screen and (max-width: 600px) {
+            .content {
+                padding: 30px 20px;
+            }
+
+            .container {
+                margin: 20px 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+        <div class="container">
+            <div class="header-accent"></div>
+            <div class="content">
+                <div class="logo">Academic<span>Hub</span></div>
+                <div class="title">
+                    <%= heading %>
+                </div>
+                <div class="text">
+                    <%- body %>
+                </div>
+            </div>
+            <div class="footer">
+                <hr>
+                <strong>Smart Learn</strong><br>
+                Student Progress Tracking System<br>
+                &copy; 2026 Academic Hub. All rights reserved.
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

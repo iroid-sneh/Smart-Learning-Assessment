@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { baseUrl } from "./constants/constant";
+import { baseUrl } from "./constants/constant.js";
 
 /**
  * App logo

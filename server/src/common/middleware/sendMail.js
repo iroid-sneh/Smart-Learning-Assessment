@@ -1,55 +1,51 @@
-/**
- * emailService.js
- * @description :: exports function used in sending mails using nodemailer
- */
-
-import nodeMailer from "nodemailer";
+import nodemailer from "nodemailer";
 import ejs from "ejs";
 import path from "path";
-import { logo } from "../helper";
+import { fileURLToPath } from "url";
+import { logo } from "../helper.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const sendMail = async (obj, template) => {
-    let transporter = nodeMailer.createTransport({
-        host: process.env.MAIL_HOST,
-        port: process.env.MAIL_PORT,
+    const emailUser = process.env.EMAIL_USER || process.env.MAIL_USERNAME;
+    const emailPass = process.env.EMAIL_PASS || process.env.MAIL_PASSWORD;
+    const emailService = process.env.EMAIL_SERVICE || "gmail";
+
+    if (!emailUser || !emailPass) {
+        throw new Error("Email credentials are missing. Set EMAIL_USER and EMAIL_PASS.");
+    }
+
+    const transporter = nodemailer.createTransport({
+        service: emailService,
         auth: {
-            user: process.env.MAIL_USERNAME,
-            pass: process.env.MAIL_PASSWORD,
+            user: emailUser,
+            pass: emailPass,
         },
     });
 
-    if (!Array.isArray(obj.to)) {
-        obj.to = [obj.to];
-    }
-
+    const toList = Array.isArray(obj.to) ? obj.to : [obj.to];
     const data = {
         ...obj,
-        APP_NAME: process.env.APP_NAME,
+        APP_NAME: process.env.APP_NAME || "Smart Learn",
         logo: logo(),
     };
 
     const htmlText = await ejs.renderFile(
-        path.join(`${__dirname}/../../../views/email/${template}.ejs`),
+        path.resolve(__dirname, "../../../views/email", `${template}.ejs`),
         data
     );
 
-    return await Promise.all(
-        obj.to.map((emailId) => {
-            let mailOpts = {
-                from: `${process.env.APP_NAME} <${process.env.MAIL_SENDER}>`,
+    await Promise.all(
+        toList.map((emailId) =>
+            transporter.sendMail({
+                from: `${process.env.APP_NAME || "Smart Learn"} <${process.env.MAIL_SENDER || emailUser}>`,
                 to: emailId,
                 subject: obj.subject,
                 html: htmlText,
-            };
-            transporter.sendMail(mailOpts, function (err, response) {
-                if (err) {
-                    console.log(`Mail error : ${err}`);
-                } else {
-                    console.log(`Mail sent : ${mailOpts.to}`);
-                }
-            });
-        })
+            })
+        )
     );
 };
 
-module.exports = sendMail;
+export default sendMail;

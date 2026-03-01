@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { VerifyOtpPage } from './pages/VerifyOtpPage';
 import { StudentDashboard } from './pages/StudentDashboard';
 import { FacultyDashboard } from './pages/FacultyDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
@@ -35,6 +36,7 @@ export function App() {
           {/* Auth Routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/verify-otp" element={<VerifyOtpPage />} />
 
           {/* Student Routes */}
           <Route path="/student" element={

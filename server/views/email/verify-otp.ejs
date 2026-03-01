@@ -1,0 +1,10 @@
+<%- include('layout', { title: 'Verify Your Email' , heading: 'Confirm your email address' , body: ` To complete your
+    registration, please use the following One-Time Password (OTP). This code is valid for <b>5 minutes</b>.
+    <div class="otp-container">
+        <div class="otp-box">${otp}</div>
+    </div>
+    <p style="font-size: 14px; color: #94a3b8; text-align: center;">
+        If you didn't request this, you can safely ignore this email.
+    </p>
+    `
+    }) %>

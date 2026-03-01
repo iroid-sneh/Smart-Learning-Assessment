@@ -1,7 +1,9 @@
 import Submission from "../../models/submission.js";
 import Assignment from "../../models/assignment.js";
 import Course from "../../models/course.js";
+import User from "../../models/user.js";
 import { BadRequestException, NotFoundException, ForbiddenException, ConflictException } from "../common/utils/errorException.js";
+import sendMail from "../common/middleware/sendMail.js";
 
 class submissionServices {
     static async createSubmission(assignmentId, data, user, file) {
@@ -102,6 +104,26 @@ class submissionServices {
         submission.evaluatedBy = user._id;
 
         await submission.save();
+
+        const studentUser = await User.findById(submission.student).select(
+            "email"
+        );
+        if (studentUser?.email) {
+            try {
+                await sendMail(
+                    {
+                        to: studentUser.email,
+                        subject: `Assignment evaluated: ${assignment.title}`,
+                        assignmentTitle: assignment.title,
+                        marks,
+                        feedback,
+                    },
+                    "evaluation"
+                );
+            } catch (mailError) {
+                console.error("Evaluation email failed:", mailError.message);
+            }
+        }
 
         return {
             success: true,

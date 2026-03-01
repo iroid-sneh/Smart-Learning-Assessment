@@ -11,6 +11,11 @@ class authController {
         return data;
     }
 
+    static async verifyOtp(req, res) {
+        const data = await authServices.verifyOtp(req.body, req, res);
+        return data;
+    }
+
     /**
      * @description: Login a user
      * @param {*} req

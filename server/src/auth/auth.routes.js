@@ -3,9 +3,11 @@ import authController from "./auth.controller.js";
 import validator from "../common/config/joiValidation.js";
 import registerDto from "./dtos/registerDto.js";
 import loginDto from "./dtos/loginDto.js";
+import verifyOtpDto from "./dtos/verifyOtpDto.js";
 const router = express.Router();
 
 router.post("/register", validator.body(registerDto), authController.register);
+router.post("/verify-otp", validator.body(verifyOtpDto), authController.verifyOtp);
 router.post("/login", validator.body(loginDto), authController.login);
 
 export default router;
