@@ -25,6 +25,16 @@ class authController {
         const data = await authServices.login(req.body, req, res);
         return data;
     }
+
+    static async forgotPassword(req, res) {
+        const data = await authServices.forgotPassword(req.body, req, res);
+        return data;
+    }
+
+    static async resetPassword(req, res) {
+        const data = await authServices.resetPassword(req.body, req, res);
+        return data;
+    }
 }
 
 export default authController;

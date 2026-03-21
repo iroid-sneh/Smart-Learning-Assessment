@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { GraduationCap, ArrowRight, User, Lock, Shield } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -95,9 +95,9 @@ export function LoginPage() {
         </form>
 
         <div className="mt-6 text-center">
-          <a href="#" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+          <Link to="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
             Forgot your password?
-          </a>
+          </Link>
         </div>
       </div>
 

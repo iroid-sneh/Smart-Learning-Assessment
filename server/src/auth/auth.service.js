@@ -290,6 +290,131 @@ class authServices {
             });
         }
     }
+    /**
+     * @description: Send OTP for password reset
+     */
+    static async forgotPassword(data, req, res) {
+        try {
+            const { email } = data;
+            const trimmedEmail = (email || "").trim().toLowerCase();
+
+            if (!trimmedEmail) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Email is required",
+                });
+            }
+
+            const user = await User.findOne({ email: trimmedEmail });
+            if (!user) {
+                // Don't reveal whether the email exists
+                return res.status(200).json({
+                    success: true,
+                    message: "If an account with that email exists, a password reset OTP has been sent.",
+                });
+            }
+
+            if (!user.isEmailVerified) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Email is not verified. Please register again.",
+                });
+            }
+
+            const otp = randomOtpGenerator(4);
+            user.otpCode = otp;
+            user.otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+            await user.save();
+
+            await sendMail(
+                {
+                    to: user.email,
+                    subject: "Password Reset - Smart Learn",
+                    otp,
+                },
+                "password-reset"
+            );
+
+            return res.status(200).json({
+                success: true,
+                message: "If an account with that email exists, a password reset OTP has been sent.",
+            });
+        } catch (error) {
+            console.error("Error In Forgot Password", error);
+            return res.status(500).json({
+                success: false,
+                message: "Internal Server Error",
+                error: process.env.ENV !== "production" ? error.message : undefined,
+            });
+        }
+    }
+
+    /**
+     * @description: Reset password using OTP
+     */
+    static async resetPassword(data, req, res) {
+        try {
+            const { email, otp, newPassword } = data;
+            const trimmedEmail = (email || "").trim().toLowerCase();
+            const trimmedOtp = String(otp || "").trim();
+
+            if (!trimmedEmail || !trimmedOtp || !newPassword) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Email, OTP, and new password are required",
+                });
+            }
+
+            if (newPassword.length < 6) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Password must be at least 6 characters",
+                });
+            }
+
+            const user = await User.findOne({ email: trimmedEmail }).select(
+                "+otpCode +otpExpiresAt"
+            );
+
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                });
+            }
+
+            if (!user.otpCode || !user.otpExpiresAt || user.otpCode !== trimmedOtp) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid OTP",
+                });
+            }
+
+            if (new Date() > new Date(user.otpExpiresAt)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "OTP has expired. Please request a new one.",
+                });
+            }
+
+            user.password = await AuthHelper.hashPassword(newPassword);
+            user.otpCode = null;
+            user.otpExpiresAt = null;
+            await user.save();
+
+            return res.status(200).json({
+                success: true,
+                message: "Password reset successfully. You can now login with your new password.",
+            });
+        } catch (error) {
+            console.error("Error In Reset Password", error);
+            return res.status(500).json({
+                success: false,
+                message: "Internal Server Error",
+                error: process.env.ENV !== "production" ? error.message : undefined,
+            });
+        }
+    }
 }
 
 export default authServices;
