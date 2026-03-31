@@ -58,6 +58,6 @@ app.use("/", routes);
 app.use("/api/documentation", swagger);
 app.use(errorHandler);
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
     console.log(`Listening on ${process.env.BASE_URL}:${PORT}`);
 });
