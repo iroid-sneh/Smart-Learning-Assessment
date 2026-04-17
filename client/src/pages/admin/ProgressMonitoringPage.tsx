@@ -4,8 +4,10 @@ import { Card } from '../../components/ui/Card';
 import { Table } from '../../components/ui/Table';
 import { ProgressBar } from '../../components/ui/ProgressBar';
 import { Badge } from '../../components/ui/Badge';
-import { TrendingUp, Users, AlertCircle } from 'lucide-react';
+import { TrendingUp, Users, AlertCircle, Download } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
 import api from '../../services/api';
+import { exportToCsv, exportToExcel } from '../../utils/exportData';
 
 export function ProgressMonitoringPage() {
   const [courses, setCourses] = useState<any[]>([]);
@@ -76,6 +78,16 @@ export function ProgressMonitoringPage() {
     };
   });
 
+  const handleExportProgress = (format: 'csv' | 'excel') => {
+    const headers = ['Student Name', 'Course', 'Score', 'Status'];
+    const rows = studentPerformance.map(s => [s.name, s.course, s.score, s.status]);
+    if (format === 'csv') {
+      exportToCsv(headers, rows, 'Student_Progress');
+    } else {
+      exportToExcel(headers, rows, 'Student_Progress');
+    }
+  };
+
   if (loading) return <Layout role="admin"><div className="p-8">Loading progress overview...</div></Layout>;
 
   return <Layout role="admin">
@@ -145,10 +157,18 @@ export function ProgressMonitoringPage() {
       </Card>
     </div>
     <Card title="Student Performance List" noPadding>
-      <div className="p-6 border-b border-gray-100">
+      <div className="p-6 border-b border-gray-100 flex items-center justify-between">
         <h3 className="text-lg font-bold text-gray-900">
           Student List
         </h3>
+        <div className="flex items-center space-x-2">
+          <Button variant="secondary" size="sm" icon={<Download className="w-4 h-4" />} onClick={() => handleExportProgress('csv')}>
+            Export CSV
+          </Button>
+          <Button variant="secondary" size="sm" icon={<Download className="w-4 h-4" />} onClick={() => handleExportProgress('excel')}>
+            Export Excel
+          </Button>
+        </div>
       </div>
       <Table data={studentPerformance} keyField="id" columns={[{
         header: 'Student Name',

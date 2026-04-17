@@ -5,10 +5,13 @@ import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
-import { Plus, Edit2, Trash2, UserPlus } from 'lucide-react';
+import { Badge } from '../../components/ui/Badge';
+import { Plus, Edit2, Trash2, Eye, AlertTriangle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 
 export function AdminCourseManagementPage() {
+  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [courses, setCourses] = useState<any[]>([]);
   const [faculty, setFaculty] = useState<any[]>([]);
@@ -20,6 +23,12 @@ export function AdminCourseManagementPage() {
   const [code, setCode] = useState('');
   const [selectedFaculty, setSelectedFaculty] = useState('');
   const [description, setDescription] = useState('');
+
+  // delete confirmation state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<any>(null);
+  const [deleteStats, setDeleteStats] = useState<{ materials: number; assignments: number; submissions: number } | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchData = async () => {
     setLoading(true);
@@ -81,10 +90,40 @@ export function AdminCourseManagementPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this course?")) return;
+  const openDeleteModal = async (course: any) => {
+    setCourseToDelete(course);
+    setDeleteLoading(true);
+    setDeleteModalOpen(true);
     try {
-      await api.delete(`/courses/${id}`);
+      const [matRes, assignRes] = await Promise.all([
+        api.get(`/materials/course/${course._id}`),
+        api.get(`/assignments/course/${course._id}`),
+      ]);
+      const mats = matRes.data?.success ? matRes.data.data : [];
+      const assigns = assignRes.data?.success ? assignRes.data.data : [];
+      let totalSubs = 0;
+      await Promise.all(
+        assigns.map(async (a: any) => {
+          try {
+            const subRes = await api.get(`/submissions/assignment/${a._id}`);
+            if (subRes.data?.success) totalSubs += subRes.data.data.length;
+          } catch {}
+        })
+      );
+      setDeleteStats({ materials: mats.length, assignments: assigns.length, submissions: totalSubs });
+    } catch {
+      setDeleteStats({ materials: 0, assignments: 0, submissions: 0 });
+    }
+    setDeleteLoading(false);
+  };
+
+  const confirmDelete = async () => {
+    if (!courseToDelete) return;
+    try {
+      await api.delete(`/courses/${courseToDelete._id}`);
+      setDeleteModalOpen(false);
+      setCourseToDelete(null);
+      setDeleteStats(null);
       fetchData();
     } catch (e) {
       console.error(e);
@@ -110,7 +149,14 @@ export function AdminCourseManagementPage() {
       {loading ? <div className="p-8">Loading courses...</div> :
         <Table data={courses} keyField="_id" columns={[{
           header: 'Course Name',
-          accessor: 'title',
+          accessor: (item: any) => (
+            <button
+              onClick={() => navigate(`/admin/course/${item._id}`)}
+              className="text-blue-600 hover:text-blue-800 hover:underline font-medium text-left"
+            >
+              {item.title}
+            </button>
+          ),
           className: 'font-medium'
         }, {
           header: 'Code',
@@ -122,10 +168,13 @@ export function AdminCourseManagementPage() {
           header: 'Students',
           accessor: (item: any) => item.students?.length || 0
         }]} actions={item => <div className="flex justify-end space-x-2">
+          <Button size="sm" variant="secondary" icon={<Eye className="w-4 h-4" />} onClick={() => navigate(`/admin/course/${item._id}`)}>
+            View
+          </Button>
           <Button size="sm" variant="secondary" icon={<Edit2 className="w-4 h-4" />} onClick={() => handleEdit(item)}>
             Edit
           </Button>
-          <Button size="sm" variant="danger" icon={<Trash2 className="w-4 h-4" />} onClick={() => handleDelete(item._id)}>
+          <Button size="sm" variant="danger" icon={<Trash2 className="w-4 h-4" />} onClick={() => openDeleteModal(item)}>
             Delete
           </Button>
         </div>} />}
@@ -159,6 +208,78 @@ export function AdminCourseManagementPage() {
           </Button>
         </div>
       </form>
+    </Modal>
+
+    {/* Delete Confirmation Modal */}
+    <Modal isOpen={deleteModalOpen} onClose={() => { setDeleteModalOpen(false); setCourseToDelete(null); setDeleteStats(null); }} title="Delete Course">
+      {courseToDelete && (
+        <div className="space-y-5">
+          <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+            <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-red-800">This action cannot be undone.</p>
+              <p className="text-sm text-red-600 mt-1">
+                Deleting this course will permanently remove all associated data.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-gray-900">Course Details</h4>
+            <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Course</span>
+                <span className="font-medium text-gray-800">{courseToDelete.title}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Code</span>
+                <span className="font-medium text-gray-800">{courseToDelete.code}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Faculty</span>
+                <span className="font-medium text-gray-800">{courseToDelete.faculty?.name || 'Unassigned'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Students Enrolled</span>
+                <Badge variant={courseToDelete.students?.length > 0 ? 'warning' : 'neutral'}>
+                  {courseToDelete.students?.length || 0}
+                </Badge>
+              </div>
+            </div>
+          </div>
+
+          {deleteLoading ? (
+            <p className="text-sm text-gray-500 text-center py-3">Loading course data...</p>
+          ) : deleteStats && (
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-gray-900">Data that will be lost</h4>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-gray-50 rounded-xl p-3 text-center">
+                  <p className="text-xl font-bold text-gray-900">{deleteStats.materials}</p>
+                  <p className="text-xs text-gray-500">Materials</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3 text-center">
+                  <p className="text-xl font-bold text-gray-900">{deleteStats.assignments}</p>
+                  <p className="text-xs text-gray-500">Assignments</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3 text-center">
+                  <p className="text-xl font-bold text-gray-900">{deleteStats.submissions}</p>
+                  <p className="text-xs text-gray-500">Submissions</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-end space-x-3 pt-2">
+            <Button variant="secondary" onClick={() => { setDeleteModalOpen(false); setCourseToDelete(null); setDeleteStats(null); }}>
+              Cancel
+            </Button>
+            <Button variant="danger" icon={<Trash2 className="w-4 h-4" />} onClick={confirmDelete} isLoading={deleteLoading}>
+              Delete Course
+            </Button>
+          </div>
+        </div>
+      )}
     </Modal>
   </Layout>;
 }

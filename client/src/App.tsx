@@ -24,6 +24,7 @@ import { UserManagementPage } from './pages/admin/UserManagementPage';
 import { AdminCourseManagementPage } from './pages/admin/CourseManagementPage';
 import { ProgressMonitoringPage } from './pages/admin/ProgressMonitoringPage';
 import { AnnouncementsPage } from './pages/admin/AnnouncementsPage';
+import { AdminCourseDetailPage } from './pages/admin/AdminCourseDetailPage';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -80,6 +81,7 @@ export function App() {
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="users" element={<UserManagementPage />} />
             <Route path="courses" element={<AdminCourseManagementPage />} />
+            <Route path="course/:id" element={<AdminCourseDetailPage />} />
             <Route path="progress" element={<ProgressMonitoringPage />} />
             <Route path="announcements" element={<AnnouncementsPage />} />
           </Route>

@@ -55,7 +55,8 @@ class courseServices {
 
     static async getCourseById(courseId) {
         const course = await Course.findById(courseId)
-            .populate("faculty", "name email");
+            .populate("faculty", "name email")
+            .populate("students", "name email isActive");
 
         if (!course) {
             throw new NotFoundException("Course not found");
