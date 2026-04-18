@@ -3,6 +3,7 @@ import Assignment from "../../models/assignment.js";
 import Course from "../../models/course.js";
 import User from "../../models/user.js";
 import { BadRequestException, NotFoundException, ForbiddenException, ConflictException } from "../common/utils/errorException.js";
+import { isAssignmentClosed } from "../common/utils/dateUtils.js";
 import sendMail from "../common/middleware/sendMail.js";
 
 class submissionServices {
@@ -19,6 +20,12 @@ class submissionServices {
         const course = await Course.findById(assignment.course);
         if (!course.students.some(id => id.toString() === user._id.toString())) {
             throw new ForbiddenException("You are not enrolled in this course");
+        }
+
+        if (isAssignmentClosed(assignment)) {
+            throw new ForbiddenException(
+                "This assignment is closed. The due date has passed and submissions are no longer accepted."
+            );
         }
 
         const existingSubmission = await Submission.findOne({

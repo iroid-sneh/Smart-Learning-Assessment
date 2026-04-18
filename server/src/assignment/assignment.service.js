@@ -2,6 +2,7 @@ import Assignment from "../../models/assignment.js";
 import Course from "../../models/course.js";
 import User from "../../models/user.js";
 import { BadRequestException, NotFoundException, ForbiddenException } from "../common/utils/errorException.js";
+import { isAssignmentClosed, endOfDay } from "../common/utils/dateUtils.js";
 import sendMail from "../common/middleware/sendMail.js";
 
 class assignmentServices {
@@ -18,6 +19,15 @@ class assignmentServices {
 
         if (course.faculty.toString() !== user._id.toString() && user.role !== "admin") {
             throw new ForbiddenException("Not authorized to create assignments for this course");
+        }
+
+        if (!data.dueDate) {
+            throw new BadRequestException("Due date is required");
+        }
+        if (endOfDay(data.dueDate).getTime() < Date.now()) {
+            throw new BadRequestException(
+                "Due date cannot be in the past. Please choose today or a future date."
+            );
         }
 
         const assignment = await Assignment.create({
@@ -104,14 +114,25 @@ class assignmentServices {
             throw new ForbiddenException("Not authorized to update this assignment");
         }
 
-        // Only enforce future dueDate validation if it is being modified and isn't the same as current
-        if (data.dueDate && new Date(data.dueDate) <= new Date()) {
-            throw new BadRequestException("Due date must be in the future");
+        // Once the assignment is closed (past end-of-day of its due date), only an admin
+        // may re-open it by setting a new valid due date. Faculty cannot extend closed work.
+        if (isAssignmentClosed(assignment) && user.role !== "admin") {
+            throw new ForbiddenException(
+                "This assignment is closed. Only an administrator can re-open it with a new due date."
+            );
+        }
+
+        if (data.dueDate !== undefined) {
+            if (endOfDay(data.dueDate).getTime() < Date.now()) {
+                throw new BadRequestException(
+                    "Due date cannot be in the past. Please choose today or a future date."
+                );
+            }
         }
 
         const updatedAssignment = await Assignment.findByIdAndUpdate(assignmentId, data, {
             new: true,
-            runValidators: false, // bypassing mongoose validation to allow updating other fields even if dueDate is now past
+            runValidators: false,
         }).populate("createdBy", "name email");
 
         return {

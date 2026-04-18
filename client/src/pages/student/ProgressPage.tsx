@@ -4,7 +4,7 @@ import { Card } from "../../components/ui/Card";
 import { ProgressBar } from "../../components/ui/ProgressBar";
 import { Table } from "../../components/ui/Table";
 import { Badge } from "../../components/ui/Badge";
-import { Trophy, TrendingUp, AlertCircle } from "lucide-react";
+import { Trophy, TrendingUp, AlertCircle, XCircle } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
 
@@ -46,10 +46,13 @@ export function ProgressPage() {
             </Layout>
         );
 
+    const courseBreakdown: any[] = progress?.courseBreakdown || [];
+    const missedCount = progress?.missedAssignments || 0;
+
     return (
         <Layout role="student">
             {/* Overview Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
                 <Card className="flex items-center space-x-4">
                     <div className="p-3 bg-blue-100 text-blue-600 rounded-full">
                         <TrendingUp className="w-6 h-6" />
@@ -61,6 +64,9 @@ export function ProgressPage() {
                         <h3 className="text-2xl font-bold text-gray-900">
                             {progress?.averageMarks || 0}%
                         </h3>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                            Across all enrolled courses
+                        </p>
                     </div>
                 </Card>
                 <Card className="flex items-center space-x-4">
@@ -69,7 +75,7 @@ export function ProgressPage() {
                     </div>
                     <div>
                         <p className="text-sm text-gray-500">
-                            Assignments Completed
+                            Assignments Submitted
                         </p>
                         <h3 className="text-2xl font-bold text-gray-900">
                             {progress?.submittedAssignments || 0}/
@@ -78,12 +84,26 @@ export function ProgressPage() {
                     </div>
                 </Card>
                 <Card className="flex items-center space-x-4">
+                    <div className="p-3 bg-red-100 text-red-600 rounded-full">
+                        <XCircle className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <p className="text-sm text-gray-500">Missed</p>
+                        <h3 className="text-2xl font-bold text-gray-900">
+                            {missedCount}
+                        </h3>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                            Counted as 0 in average
+                        </p>
+                    </div>
+                </Card>
+                <Card className="flex items-center space-x-4">
                     <div className="p-3 bg-orange-100 text-orange-600 rounded-full">
                         <AlertCircle className="w-6 h-6" />
                     </div>
                     <div>
                         <p className="text-sm text-gray-500">
-                            Platform Completion
+                            Submission Rate
                         </p>
                         <h3 className="text-2xl font-bold text-gray-900">
                             {progress?.completionPercentage || 0}%
@@ -93,28 +113,55 @@ export function ProgressPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Subject Progress */}
-                <Card title="Course Progress">
+                {/* Per-course breakdown */}
+                <Card>
                     <h3 className="text-lg font-bold text-gray-900 mb-6">
-                        Course Completion
+                        Course Progress
                     </h3>
                     <div className="space-y-6">
-                        {/* If backend tracks per subject, render here. For MVP mock subject mapping */}
-                        <div>
-                            <div className="flex justify-between mb-2">
-                                <span className="font-medium text-gray-900">
-                                    Overall Progress Track
-                                </span>
-                                <span className="text-sm text-gray-500">
-                                    Total: {progress?.completionPercentage || 0}
-                                    %
-                                </span>
+                        {courseBreakdown.length === 0 && (
+                            <p className="text-sm text-gray-500">
+                                You are not enrolled in any courses yet.
+                            </p>
+                        )}
+                        {courseBreakdown.map((c: any) => (
+                            <div key={c.courseId}>
+                                <div className="flex justify-between items-start mb-2">
+                                    <div>
+                                        <p className="font-medium text-gray-900">
+                                            {c.courseTitle}
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                            {c.courseCode} &bull;{" "}
+                                            {c.submittedAssignments}/
+                                            {c.totalAssignments} submitted
+                                            {c.missedAssignments > 0 && (
+                                                <>
+                                                    {" "}
+                                                    &bull;{" "}
+                                                    <span className="text-red-500">
+                                                        {c.missedAssignments}{" "}
+                                                        missed
+                                                    </span>
+                                                </>
+                                            )}
+                                        </p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-sm font-semibold text-gray-900">
+                                            {c.averageMarks}%
+                                        </p>
+                                        <p className="text-xs text-gray-400">
+                                            avg
+                                        </p>
+                                    </div>
+                                </div>
+                                <ProgressBar
+                                    progress={c.completionPercentage || 0}
+                                    showLabel={false}
+                                />
                             </div>
-                            <ProgressBar
-                                progress={progress?.completionPercentage || 0}
-                                showLabel={false}
-                            />
-                        </div>
+                        ))}
                     </div>
                 </Card>
 

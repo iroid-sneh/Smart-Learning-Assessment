@@ -10,6 +10,17 @@ import { Badge } from '../../components/ui/Badge';
 import { Plus, Edit2, Trash2, Power, Download, AlertTriangle } from 'lucide-react';
 import api from '../../services/api';
 import { exportToCsv, exportToExcel } from '../../utils/exportData';
+import {
+  validateName,
+  validateEmail,
+  validatePassword,
+  validateLength,
+  extractApiError,
+  hasErrors,
+  FieldErrors,
+} from '../../utils/validation';
+
+type UserFormField = 'name' | 'email' | 'password' | 'department' | 'form';
 
 export function UserManagementPage() {
   const [activeTab, setActiveTab] = useState('student');
@@ -24,6 +35,8 @@ export function UserManagementPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [department, setDepartment] = useState('');
+  const [errors, setErrors] = useState<FieldErrors<UserFormField>>({});
+  const [saving, setSaving] = useState(false);
 
   // Delete faculty reassign state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -54,6 +67,7 @@ export function UserManagementPage() {
     setEmail(user.email);
     setDepartment(user.department || '');
     setPassword('');
+    setErrors({});
     setIsModalOpen(true);
   };
 
@@ -63,21 +77,51 @@ export function UserManagementPage() {
     setEmail('');
     setDepartment('');
     setPassword('');
+    setErrors({});
     setIsModalOpen(true);
   };
 
+  const validateUserForm = (): FieldErrors<UserFormField> => {
+    const next: FieldErrors<UserFormField> = {};
+    next.name = validateName(name);
+    next.email = validateEmail(email);
+    if (!selectedUser) {
+      next.password = validatePassword(password);
+    }
+    if (department && department.trim()) {
+      next.department = validateLength(department, 'Department', 2, 100);
+    }
+    return next;
+  };
+
   const handleSaveUser = async () => {
+    const nextErrors = validateUserForm();
+    setErrors(nextErrors);
+    if (hasErrors(nextErrors as Record<string, string>)) return;
+
+    setSaving(true);
     try {
       if (selectedUser) {
-        await api.put(`/users/${selectedUser._id}`, { name, email, department });
+        await api.put(`/users/${selectedUser._id}`, {
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          department: department.trim(),
+        });
       } else {
-        await api.post('/auth/register', { name, email, password, role: activeTab });
+        await api.post('/auth/register', {
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          password,
+          role: activeTab,
+        });
       }
       fetchUsers();
       setIsModalOpen(false);
     } catch (e) {
       console.error("Error saving user", e);
-      alert("Failed to save user check console for errors.");
+      setErrors({ form: extractApiError(e, 'Failed to save user. Please try again.') });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -225,15 +269,56 @@ export function UserManagementPage() {
     </Card>
 
     <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={selectedUser ? 'Edit User' : `Add New ${activeTab === 'student' ? 'Student' : 'Faculty'}`}>
-      <form className="space-y-4">
-        <Input label="Full Name" placeholder="John Doe" value={name} onChange={(e) => setName(e.target.value)} />
-        <Input label="Email Address" type="email" placeholder="john@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-        {!selectedUser && <Input label="Password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />}
+      <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSaveUser(); }} noValidate>
+        {errors.form && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {errors.form}
+          </div>
+        )}
+        <Input
+          label="Full Name"
+          placeholder="John Doe"
+          value={name}
+          onChange={(e) => { setName(e.target.value); if (errors.name) setErrors(prev => ({ ...prev, name: '' })); }}
+          error={errors.name}
+          maxLength={100}
+          required
+        />
+        <Input
+          label="Email Address"
+          type="email"
+          placeholder="john@example.com"
+          value={email}
+          onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors(prev => ({ ...prev, email: '' })); }}
+          error={errors.email}
+          maxLength={254}
+          required
+        />
+        {!selectedUser && (
+          <div>
+            <Input
+              label="Password"
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); if (errors.password) setErrors(prev => ({ ...prev, password: '' })); }}
+              error={errors.password}
+              minLength={8}
+              maxLength={128}
+              required
+            />
+            {!errors.password && (
+              <p className="mt-1 text-xs text-gray-500">
+                At least 8 characters, including an uppercase letter, a lowercase letter, and a number.
+              </p>
+            )}
+          </div>
+        )}
         <div className="flex justify-end space-x-3 mt-6">
-          <Button variant="secondary" onClick={() => setIsModalOpen(false)} type="button">
+          <Button variant="secondary" onClick={() => setIsModalOpen(false)} type="button" disabled={saving}>
             Cancel
           </Button>
-          <Button type="button" onClick={handleSaveUser}>
+          <Button type="submit" isLoading={saving} disabled={saving}>
             {selectedUser ? 'Update User' : 'Create User'}
           </Button>
         </div>

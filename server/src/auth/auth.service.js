@@ -350,6 +350,72 @@ class authServices {
     }
 
     /**
+     * @description: Change password while logged in.
+     * Rejects if the provided current password is wrong, or if the new password
+     * is the same as the current one.
+     */
+    static async changePassword(data, req, res) {
+        try {
+            const { currentPassword, newPassword } = data;
+            const authedUser = req.user;
+
+            if (!authedUser) {
+                return res.status(401).json({
+                    success: false,
+                    message: "You must be logged in to change your password.",
+                });
+            }
+
+            const Model = authedUser.role === "admin" ? Admin : User;
+            const user = await Model.findById(authedUser._id).select("+password");
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Account not found.",
+                });
+            }
+
+            const isCurrentValid = await AuthHelper.matchHashedPassword(
+                currentPassword,
+                user.password
+            );
+            if (!isCurrentValid) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Current password is incorrect.",
+                });
+            }
+
+            const isSameAsCurrent = await AuthHelper.matchHashedPassword(
+                newPassword,
+                user.password
+            );
+            if (isSameAsCurrent) {
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "New password must be different from your current password.",
+                });
+            }
+
+            user.password = await AuthHelper.hashPassword(newPassword);
+            await user.save();
+
+            return res.status(200).json({
+                success: true,
+                message: "Password changed successfully.",
+            });
+        } catch (error) {
+            console.error("Error In Change Password", error);
+            return res.status(500).json({
+                success: false,
+                message: "Internal Server Error",
+                error: process.env.ENV !== "production" ? error.message : undefined,
+            });
+        }
+    }
+
+    /**
      * @description: Reset password using OTP
      */
     static async resetPassword(data, req, res) {

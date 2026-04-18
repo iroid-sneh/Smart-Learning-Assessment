@@ -1,10 +1,21 @@
 import Joi from "joi";
 
 export default Joi.object().keys({
-    title: Joi.string().min(3).max(200).trim().required().label("title"),
-    code: Joi.string().pattern(/^[A-Z0-9\-]{2,20}$/).required().label("code").messages({
-        "string.pattern.base": "Course code must be alphanumeric and uppercase (e.g., CS-601)",
+    title: Joi.string().min(3).max(200).trim().required().label("Title").messages({
+        "string.empty": "Course title is required.",
+        "string.min": "Course title must be at least 3 characters.",
+        "string.max": "Course title must be at most 200 characters.",
+        "any.required": "Course title is required.",
     }),
-    description: Joi.string().max(1000).allow("").trim().optional().label("description"),
-    faculty: Joi.string().regex(/^[0-9a-fA-F]{24}$/).optional().label("faculty"),
+    code: Joi.string().trim().uppercase().pattern(/^[A-Z0-9\-]{2,20}$/).required().label("Code").messages({
+        "string.empty": "Course code is required.",
+        "string.pattern.base": "Course code must be 2–20 characters using uppercase letters, digits, or dashes (e.g., CS-601).",
+        "any.required": "Course code is required.",
+    }),
+    description: Joi.string().max(1000).allow("").trim().optional().label("Description").messages({
+        "string.max": "Description must be at most 1000 characters.",
+    }),
+    faculty: Joi.string().regex(/^[0-9a-fA-F]{24}$/).optional().label("Faculty").messages({
+        "string.pattern.base": "Please select a valid faculty member.",
+    }),
 });

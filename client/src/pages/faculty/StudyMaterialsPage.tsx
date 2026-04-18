@@ -4,9 +4,20 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { FileUpload } from '../../components/ui/FileUpload';
 import { Modal } from '../../components/ui/Modal';
-import { FileText, Trash2, Download, Plus } from 'lucide-react';
+import { FileText, Trash2, Download, Plus, AlertTriangle } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import {
+  validateRequired,
+  validateLength,
+  validateFile,
+  extractApiError,
+  hasErrors,
+  FieldErrors,
+} from '../../utils/validation';
+
+type MaterialFormField = 'title' | 'file' | 'course' | 'form';
+const MATERIAL_ACCEPT = ['.pdf', '.doc', '.docx', '.ppt', '.pptx'];
 
 export function StudyMaterialsPage() {
   const { user } = useAuth();
@@ -20,6 +31,12 @@ export function StudyMaterialsPage() {
   const [title, setTitle] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [errors, setErrors] = useState<FieldErrors<MaterialFormField>>({});
+
+  // Delete confirmation state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [materialToDelete, setMaterialToDelete] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchCourses = async () => {
     try {
@@ -54,17 +71,26 @@ export function StudyMaterialsPage() {
     fetchMaterials();
   }, [selectedCourse]);
 
+  const validateMaterialForm = (): FieldErrors<MaterialFormField> => {
+    const next: FieldErrors<MaterialFormField> = {};
+    next.course = validateRequired(selectedCourse, 'Course');
+    next.title =
+      validateRequired(title, 'Title') ||
+      validateLength(title, 'Title', 3, 200);
+    next.file = validateFile(selectedFile, { maxSizeMB: 25, allowedExtensions: MATERIAL_ACCEPT });
+    return next;
+  };
+
   const handleCreateMaterial = async () => {
-    if (!selectedFile || !title || !selectedCourse) {
-      alert("Please fill all fields and select a file.");
-      return;
-    }
+    const nextErrors = validateMaterialForm();
+    setErrors(nextErrors);
+    if (hasErrors(nextErrors as Record<string, string>)) return;
 
     setIsUploading(true);
     try {
       const formData = new FormData();
-      formData.append('title', title);
-      formData.append('file', selectedFile);
+      formData.append('title', title.trim());
+      formData.append('file', selectedFile as File);
 
       await api.post(`/materials/course/${selectedCourse}`, formData, {
         headers: {
@@ -76,19 +102,32 @@ export function StudyMaterialsPage() {
       setIsUploadModalOpen(false);
       setTitle('');
       setSelectedFile(null);
+      setErrors({});
     } catch (e: any) {
       console.error(e);
-      alert('Error saving material: ' + (e.response?.data?.error || e.message));
+      setErrors({ form: extractApiError(e, 'Failed to upload material. Please try again.') });
     }
     setIsUploading(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete material?")) return;
+  const openDeleteMaterial = (mat: any) => {
+    setMaterialToDelete(mat);
+    setDeleteModalOpen(true);
+  };
+
+  const confirmDeleteMaterial = async () => {
+    if (!materialToDelete) return;
+    setIsDeleting(true);
     try {
-      await api.delete(`/materials/${id}`);
+      await api.delete(`/materials/${materialToDelete._id}`);
+      setDeleteModalOpen(false);
+      setMaterialToDelete(null);
       fetchMaterials();
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return <Layout role="faculty">
@@ -104,7 +143,7 @@ export function StudyMaterialsPage() {
             <option key={c._id} value={c._id}>{c.title} ({c.code})</option>
           ))}
         </select>
-        <Button icon={<Plus className="w-4 h-4" />} onClick={() => { setTitle(''); setSelectedFile(null); setIsUploadModalOpen(true); }} disabled={!selectedCourse}>
+        <Button icon={<Plus className="w-4 h-4" />} onClick={() => { setTitle(''); setSelectedFile(null); setErrors({}); setIsUploadModalOpen(true); }} disabled={!selectedCourse}>
           Upload Material
         </Button>
       </div>
@@ -129,7 +168,7 @@ export function StudyMaterialsPage() {
               Download
             </Button>
           </a>
-          <Button variant="danger" size="sm" icon={<Trash2 className="w-4 h-4" />} onClick={() => handleDelete(item._id)}>
+          <Button variant="danger" size="sm" icon={<Trash2 className="w-4 h-4" />} onClick={() => openDeleteMaterial(item)}>
             Delete
           </Button>
         </div>
@@ -138,29 +177,115 @@ export function StudyMaterialsPage() {
     </div>
 
     <Modal isOpen={isUploadModalOpen} onClose={() => setIsUploadModalOpen(false)} title="Upload Study Material">
-      <div className="space-y-4">
+      <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleCreateMaterial(); }} noValidate>
+        {errors.form && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {errors.form}
+          </div>
+        )}
+        {errors.course && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {errors.course}
+          </div>
+        )}
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700">
-            Material Title
+            Material Title <span className="text-red-500">*</span>
           </label>
-          <input type="text" className="w-full rounded-lg border border-gray-300 p-2.5" placeholder="e.g. Lecture Notes Week 1" value={title} onChange={e => setTitle(e.target.value)} />
+          <input
+            type="text"
+            className={`w-full rounded-lg border p-2.5 ${errors.title ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : 'border-gray-300'}`}
+            placeholder="e.g. Lecture Notes Week 1"
+            value={title}
+            maxLength={200}
+            onChange={e => { setTitle(e.target.value); if (errors.title) setErrors(prev => ({ ...prev, title: '' })); }}
+          />
+          {errors.title && <p className="mt-1 text-sm text-red-500">{errors.title}</p>}
         </div>
 
-        <FileUpload
-          label="Select Document"
-          onFileSelect={setSelectedFile}
-          accept=".pdf,.doc,.docx,.ppt,.pptx"
-        />
+        <div>
+          <FileUpload
+            label="Select Document"
+            onFileSelect={(file) => { setSelectedFile(file); if (errors.file) setErrors(prev => ({ ...prev, file: '' })); }}
+            accept={MATERIAL_ACCEPT.join(',')}
+          />
+          {errors.file && <p className="mt-1 text-sm text-red-500">{errors.file}</p>}
+          <p className="mt-1 text-xs text-gray-500">
+            Accepted: {MATERIAL_ACCEPT.join(', ')} &bull; Max size: 25 MB
+          </p>
+        </div>
 
         <div className="flex justify-end space-x-3 mt-6">
-          <Button variant="secondary" onClick={() => setIsUploadModalOpen(false)} disabled={isUploading}>
+          <Button variant="secondary" onClick={() => setIsUploadModalOpen(false)} disabled={isUploading} type="button">
             Cancel
           </Button>
-          <Button onClick={handleCreateMaterial} disabled={!title || !selectedFile || isUploading}>
+          <Button type="submit" isLoading={isUploading} disabled={isUploading}>
             {isUploading ? 'Uploading...' : 'Upload'}
           </Button>
         </div>
-      </div>
+      </form>
+    </Modal>
+
+    {/* Delete Material Confirmation Modal */}
+    <Modal
+      isOpen={deleteModalOpen}
+      onClose={() => { setDeleteModalOpen(false); setMaterialToDelete(null); }}
+      title="Delete Material"
+    >
+      {materialToDelete && (
+        <div className="space-y-5">
+          <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+            <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-red-800">This action cannot be undone.</p>
+              <p className="text-sm text-red-600 mt-1">
+                Deleting this material will permanently remove the file and its record for all enrolled students.
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-gray-900">Material Details</h4>
+            <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Title</span>
+                <span className="font-medium text-gray-800 text-right max-w-[60%] truncate">{materialToDelete.title}</span>
+              </div>
+              {materialToDelete.description && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Description</span>
+                  <span className="font-medium text-gray-800 text-right max-w-[60%] truncate">{materialToDelete.description}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-gray-500">Uploaded</span>
+                <span className="font-medium text-gray-800">
+                  {materialToDelete.createdAt ? new Date(materialToDelete.createdAt).toLocaleDateString() : '—'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-2">
+            <Button
+              variant="secondary"
+              onClick={() => { setDeleteModalOpen(false); setMaterialToDelete(null); }}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              icon={<Trash2 className="w-4 h-4" />}
+              onClick={confirmDeleteMaterial}
+              isLoading={isDeleting}
+              disabled={isDeleting}
+            >
+              Delete Material
+            </Button>
+          </div>
+        </div>
+      )}
     </Modal>
   </Layout>;
 }

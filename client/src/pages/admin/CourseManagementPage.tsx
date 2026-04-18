@@ -9,6 +9,16 @@ import { Badge } from '../../components/ui/Badge';
 import { Plus, Edit2, Trash2, Eye, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import {
+  validateRequired,
+  validateLength,
+  validateCourseCode,
+  extractApiError,
+  hasErrors,
+  FieldErrors,
+} from '../../utils/validation';
+
+type CourseFormField = 'title' | 'code' | 'description' | 'faculty' | 'form';
 
 export function AdminCourseManagementPage() {
   const navigate = useNavigate();
@@ -23,6 +33,8 @@ export function AdminCourseManagementPage() {
   const [code, setCode] = useState('');
   const [selectedFaculty, setSelectedFaculty] = useState('');
   const [description, setDescription] = useState('');
+  const [errors, setErrors] = useState<FieldErrors<CourseFormField>>({});
+  const [saving, setSaving] = useState(false);
 
   // delete confirmation state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -57,6 +69,7 @@ export function AdminCourseManagementPage() {
     setCode('');
     setDescription('');
     setSelectedFaculty('');
+    setErrors({});
     setIsModalOpen(true);
   };
 
@@ -66,16 +79,34 @@ export function AdminCourseManagementPage() {
     setCode(course.code);
     setDescription(course.description || '');
     setSelectedFaculty(course.faculty?._id || '');
+    setErrors({});
     setIsModalOpen(true);
   };
 
+  const validateCourseForm = (): FieldErrors<CourseFormField> => {
+    const next: FieldErrors<CourseFormField> = {};
+    next.title =
+      validateRequired(title, 'Course title') ||
+      validateLength(title, 'Course title', 3, 200);
+    next.code = validateCourseCode(code);
+    if (description && description.trim().length > 1000) {
+      next.description = 'Description must be at most 1000 characters.';
+    }
+    return next;
+  };
+
   const handleSave = async () => {
+    const nextErrors = validateCourseForm();
+    setErrors(nextErrors);
+    if (hasErrors(nextErrors as Record<string, string>)) return;
+
+    setSaving(true);
     try {
       const payload = {
-        title,
-        code,
-        description,
-        faculty: selectedFaculty || undefined
+        title: title.trim(),
+        code: code.trim().toUpperCase(),
+        description: description.trim(),
+        faculty: selectedFaculty || undefined,
       };
       if (selectedCourse) {
         await api.put(`/courses/${selectedCourse._id}`, payload);
@@ -86,7 +117,9 @@ export function AdminCourseManagementPage() {
       setIsModalOpen(false);
     } catch (err) {
       console.error(err);
-      alert('Error saving course');
+      setErrors({ form: extractApiError(err, 'Failed to save course. Please try again.') });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -181,12 +214,41 @@ export function AdminCourseManagementPage() {
     </Card>
 
     <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={selectedCourse ? 'Edit Course' : 'Add New Course'}>
-      <form className="space-y-4">
-        <Input label="Course Name" placeholder="e.g. Advanced Web Development" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <Input label="Course Code" placeholder="e.g. CS-601" value={code} onChange={(e) => setCode(e.target.value)} />
+      <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSave(); }} noValidate>
+        {errors.form && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {errors.form}
+          </div>
+        )}
+        <Input
+          label="Course Name"
+          placeholder="e.g. Advanced Web Development"
+          value={title}
+          onChange={(e) => { setTitle(e.target.value); if (errors.title) setErrors(prev => ({ ...prev, title: '' })); }}
+          error={errors.title}
+          maxLength={200}
+          required
+        />
+        <Input
+          label="Course Code"
+          placeholder="e.g. CS-601"
+          value={code}
+          onChange={(e) => { setCode(e.target.value.toUpperCase()); if (errors.code) setErrors(prev => ({ ...prev, code: '' })); }}
+          error={errors.code}
+          maxLength={20}
+          required
+        />
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700">Course Description</label>
-          <textarea className="w-full rounded-lg border border-gray-300 p-2.5 h-20" placeholder="Enter course description" value={description} onChange={(e) => setDescription(e.target.value)} />
+          <textarea
+            className={`w-full rounded-lg border p-2.5 h-20 ${errors.description ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : 'border-gray-300'}`}
+            placeholder="Enter course description (optional)"
+            value={description}
+            maxLength={1000}
+            onChange={(e) => { setDescription(e.target.value); if (errors.description) setErrors(prev => ({ ...prev, description: '' })); }}
+          />
+          {errors.description && <p className="mt-1 text-sm text-red-500">{errors.description}</p>}
+          <p className="text-xs text-gray-400">{description.length}/1000 characters</p>
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700">
@@ -200,10 +262,10 @@ export function AdminCourseManagementPage() {
           </select>
         </div>
         <div className="flex justify-end space-x-3 mt-6">
-          <Button variant="secondary" onClick={() => setIsModalOpen(false)} type="button">
+          <Button variant="secondary" onClick={() => setIsModalOpen(false)} type="button" disabled={saving}>
             Cancel
           </Button>
-          <Button type="button" onClick={handleSave}>
+          <Button type="submit" isLoading={saving} disabled={saving}>
             {selectedCourse ? 'Update Course' : 'Create Course'}
           </Button>
         </div>

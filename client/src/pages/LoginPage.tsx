@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { GraduationCap, ArrowRight, User, Lock, Shield } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import { ForgotPasswordModal } from '../components/ForgotPasswordModal';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -13,6 +14,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [forgotOpen, setForgotOpen] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,9 +97,13 @@ export function LoginPage() {
         </form>
 
         <div className="mt-6 text-center">
-          <Link to="/forgot-password" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+          <button
+            type="button"
+            onClick={() => setForgotOpen(true)}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
             Forgot your password?
-          </Link>
+          </button>
         </div>
       </div>
 
@@ -107,5 +113,11 @@ export function LoginPage() {
         <span>Secure Academic Portal System</span>
       </div>
     </div>
+
+    <ForgotPasswordModal
+      isOpen={forgotOpen}
+      onClose={() => setForgotOpen(false)}
+      initialEmail={email}
+    />
   </div>;
 }

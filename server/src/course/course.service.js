@@ -40,9 +40,16 @@ class courseServices {
     }
 
     static async getAllCourses(user) {
-        // Option 1: fetch all courses for everyone, or restrict
-        // Currently everyone can see all courses
-        const courses = await Course.find()
+        // Role-scoped listing so students never see courses they're not enrolled
+        // in, and faculty only see courses they actually teach. Admin sees all.
+        let filter = {};
+        if (user?.role === "student") {
+            filter = { students: user._id };
+        } else if (user?.role === "faculty") {
+            filter = { faculty: user._id };
+        }
+
+        const courses = await Course.find(filter)
             .populate("faculty", "name email")
             .sort({ createdAt: -1 });
 

@@ -4,6 +4,7 @@ import { FileUpload } from "../../components/ui/FileUpload";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
+import { isPastDueDate } from "../../utils/validation";
 
 const THEME_ORDER = ["red", "green", "blue"] as const;
 
@@ -223,12 +224,15 @@ export function AssignmentsPage() {
     }
   };
 
+  // Retained for any future UI that wants "days left"; status now uses end-of-day logic
+  // so the deadline passes only at midnight after the due date.
   const getDaysLeft = (dueDate: string) => {
     const due = new Date(dueDate).getTime();
     const now = new Date().getTime();
     const diff = due - now;
     return Math.ceil(diff / (1000 * 3600 * 24));
   };
+  void getDaysLeft;
 
   if (loading) return <Layout role="student"><div className="p-8">Loading assignments...</div></Layout>;
 
@@ -239,7 +243,7 @@ export function AssignmentsPage() {
           const submission = submissions.find(s => s.assignment?._id === item._id || s.assignment === item._id);
           const status = submission
             ? (submission.status === "evaluated" || submission.status === "Evaluated" ? "Evaluated" : "Submitted")
-            : (getDaysLeft(item.dueDate) <= 0 ? "Failed" : "Pending");
+            : (isPastDueDate(item.dueDate) ? "Failed" : "Pending");
           const courseMeta = { title: item.courseTitle, code: item.courseCode || "COURSE" };
 
           return (

@@ -48,15 +48,25 @@ export function StudentDashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
-        <StatCard icon={BookOpen} label="Enrolled Courses" value={courses.length.toString() || "0"} color="blue" />
-        <StatCard icon={FileText} label="Pending Assignments" value={((progress?.totalAssignments || 0) - (progress?.submittedAssignments || 0)).toString()} color="orange" />
+        <StatCard icon={BookOpen} label="Enrolled Courses" value={(progress?.enrolledCoursesCount ?? courses.length).toString()} color="blue" />
+        <StatCard
+          icon={FileText}
+          label="Pending Assignments"
+          value={Math.max(
+            0,
+            (progress?.totalAssignments ?? 0) -
+              (progress?.submittedAssignments ?? 0) -
+              (progress?.missedAssignments ?? 0)
+          ).toString()}
+          color="orange"
+        />
         <StatCard icon={CheckCircle} label="Completed" value={progress?.evaluatedAssignments?.toString() || "0"} color="green" />
         <StatCard
           icon={TrendingUp}
-          label="Overall Progress"
-          value={`${progress?.completionPercentage || 0}%`}
+          label="Avg Score"
+          value={`${progress?.averageMarks || 0}%`}
           color="purple"
-          trend={`${progress?.averageMarks || 0}% Avg`}
+          trend={`${progress?.completionPercentage || 0}% submitted`}
           trendUp={true}
         />
       </div>
@@ -72,17 +82,23 @@ export function StudentDashboard() {
               </Link>
             </div>
             <div className="space-y-6">
-              {courses.map(course => (
-                <div key={course._id}>
-                  <div className="flex justify-between text-sm font-medium text-gray-700 mb-2">
-                    <span>{course.title}</span>
-                    <span>100%</span>
+              {courses.map(course => {
+                const cb = (progress?.courseBreakdown || []).find(
+                  (b: any) => String(b.courseId) === String(course._id)
+                );
+                const pct = Math.round(cb?.completionPercentage || 0);
+                return (
+                  <div key={course._id}>
+                    <div className="flex justify-between text-sm font-medium text-gray-700 mb-2">
+                      <span>{course.title}</span>
+                      <span>{pct}%</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-2.5">
+                      <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${pct}%` }}></div>
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2.5">
-                    <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `100%` }}></div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               {courses.length === 0 && <p className="text-sm text-gray-500">No active courses yet.</p>}
             </div>
           </Card>
@@ -154,17 +170,25 @@ export function StudentDashboard() {
         </Card>
 
         <Card>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Distribution</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Course Averages</h3>
           <div className="space-y-3">
-            {courses.slice(0, 4).map((course, index) => (
-              <div key={course._id || index} className="flex items-center justify-between text-sm">
-                <span className="text-gray-700 truncate mr-3">{course.title}</span>
-                <span className="inline-flex h-2.5 w-24 rounded-full bg-gray-100 overflow-hidden">
-                  <span className="h-full bg-blue-600" style={{ width: `${70 + index * 7}%` }} />
-                </span>
-              </div>
-            ))}
-            {courses.length === 0 && <p className="text-sm text-gray-500">No course data yet.</p>}
+            {(progress?.courseBreakdown || []).slice(0, 4).map((c: any) => {
+              const pct = Math.max(0, Math.min(100, Math.round(c.averageMarks || 0)));
+              return (
+                <div key={c.courseId} className="flex items-center justify-between text-sm gap-3">
+                  <span className="text-gray-700 truncate flex-1" title={c.courseTitle}>{c.courseTitle}</span>
+                  <span className="inline-flex items-center gap-2">
+                    <span className="inline-flex h-2.5 w-24 rounded-full bg-gray-100 overflow-hidden">
+                      <span className="h-full bg-blue-600" style={{ width: `${pct}%` }} />
+                    </span>
+                    <span className="text-xs text-gray-500 w-10 text-right">{pct}%</span>
+                  </span>
+                </div>
+              );
+            })}
+            {(!progress?.courseBreakdown || progress.courseBreakdown.length === 0) && (
+              <p className="text-sm text-gray-500">No course data yet.</p>
+            )}
           </div>
         </Card>
       </div>

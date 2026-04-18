@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Sidebar } from './Sidebar';
-import { Menu, Bell, X } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { Menu, Bell, X, KeyRound, LogOut, ChevronDown } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import { ChangePasswordModal } from './ChangePasswordModal';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -15,12 +16,33 @@ export function Layout({
   role,
   pageTitle
 }: LayoutProps) {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState<any>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleSignOut = () => {
+    setShowUserMenu(false);
+    logout();
+    navigate('/login', { replace: true });
+  };
+
+  useEffect(() => {
+    if (!showUserMenu) return;
+    const handler = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showUserMenu]);
 
   useEffect(() => {
     const fetchNotifications = async () => {
@@ -107,14 +129,56 @@ export function Layout({
                 </div>
               )}
             </div>
-            <div className="flex items-center space-x-3 pl-4 border-l border-gray-200">
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-gray-900">{userName}</p>
-                <p className="text-xs text-gray-500 capitalize">{role}</p>
-              </div>
-              <div className="h-9 w-9 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-medium border border-blue-200">
-                {initials}
-              </div>
+            <div className="relative pl-4 border-l border-gray-200" ref={userMenuRef}>
+              <button
+                type="button"
+                onClick={() => setShowUserMenu((v) => !v)}
+                className="flex items-center space-x-3 hover:bg-gray-50 rounded-lg px-2 py-1 transition-colors"
+                aria-haspopup="menu"
+                aria-expanded={showUserMenu}
+              >
+                <div className="text-right hidden sm:block">
+                  <p className="text-sm font-medium text-gray-900">{userName}</p>
+                  <p className="text-xs text-gray-500 capitalize">{role}</p>
+                </div>
+                <div className="h-9 w-9 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-medium border border-blue-200">
+                  {initials}
+                </div>
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showUserMenu && (
+                <div
+                  role="menu"
+                  className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden"
+                >
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{userName}</p>
+                    {user?.email && (
+                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                    )}
+                    <p className="text-xs text-gray-400 capitalize mt-0.5">{role}</p>
+                  </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50"
+                    onClick={() => { setShowUserMenu(false); setChangePasswordOpen(true); }}
+                  >
+                    <KeyRound className="w-4 h-4 text-gray-500" />
+                    Change Password
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 border-t border-gray-100"
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>
@@ -154,5 +218,10 @@ export function Layout({
           </div>
         </div>
       )}
+
+      <ChangePasswordModal
+        isOpen={changePasswordOpen}
+        onClose={() => setChangePasswordOpen(false)}
+      />
     </div>;
 }

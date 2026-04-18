@@ -12,6 +12,20 @@ import { FolderCard } from '../../components/ui/FolderCard';
 import { FileUpload } from '../../components/ui/FileUpload';
 import { ArrowLeft, Users, BookOpen, FileText, ClipboardList, Download, Eye, Plus, Edit2, Trash2, UserMinus, AlertTriangle } from 'lucide-react';
 import api from '../../services/api';
+import {
+  validateRequired,
+  validateLength,
+  validateFutureOrTodayDate,
+  validateFile,
+  todayISODate,
+  endOfDayIso,
+  extractApiError,
+  hasErrors,
+  FieldErrors,
+} from '../../utils/validation';
+
+type MaterialFormField = 'title' | 'description' | 'file' | 'form';
+type AssignFormField = 'title' | 'description' | 'dueDate' | 'form';
 
 export function AdminCourseDetailPage() {
   const { id } = useParams();
@@ -32,6 +46,8 @@ export function AdminCourseDetailPage() {
   const [matTitle, setMatTitle] = useState('');
   const [matDescription, setMatDescription] = useState('');
   const [matFile, setMatFile] = useState<File | null>(null);
+  const [matErrors, setMatErrors] = useState<FieldErrors<MaterialFormField>>({});
+  const [matSaving, setMatSaving] = useState(false);
 
   // Assignment modal state
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
@@ -39,9 +55,24 @@ export function AdminCourseDetailPage() {
   const [assignTitle, setAssignTitle] = useState('');
   const [assignDescription, setAssignDescription] = useState('');
   const [assignDueDate, setAssignDueDate] = useState('');
+  const [assignErrors, setAssignErrors] = useState<FieldErrors<AssignFormField>>({});
+  const [assignSaving, setAssignSaving] = useState(false);
+  const minAssignDate = todayISODate();
+
+  const MATERIAL_ACCEPT = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.jpg', '.jpeg', '.png'];
 
   // Delete course modal state
   const [deleteCourseModalOpen, setDeleteCourseModalOpen] = useState(false);
+
+  // Delete material modal state
+  const [deleteMaterialModalOpen, setDeleteMaterialModalOpen] = useState(false);
+  const [materialToDelete, setMaterialToDelete] = useState<any>(null);
+  const [materialDeleting, setMaterialDeleting] = useState(false);
+
+  // Delete assignment modal state
+  const [deleteAssignmentModalOpen, setDeleteAssignmentModalOpen] = useState(false);
+  const [assignmentToDelete, setAssignmentToDelete] = useState<any>(null);
+  const [assignmentDeleting, setAssignmentDeleting] = useState(false);
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
@@ -110,6 +141,7 @@ export function AdminCourseDetailPage() {
     setMatTitle('');
     setMatDescription('');
     setMatFile(null);
+    setMatErrors({});
     setMaterialModalOpen(true);
   };
 
@@ -118,25 +150,41 @@ export function AdminCourseDetailPage() {
     setMatTitle(mat.title);
     setMatDescription(mat.description || '');
     setMatFile(null);
+    setMatErrors({});
     setMaterialModalOpen(true);
   };
 
+  const validateMaterialForm = (): FieldErrors<MaterialFormField> => {
+    const next: FieldErrors<MaterialFormField> = {};
+    next.title =
+      validateRequired(matTitle, 'Title') ||
+      validateLength(matTitle, 'Title', 3, 200);
+    if (matDescription && matDescription.trim().length > 1000) {
+      next.description = 'Description must be at most 1000 characters.';
+    }
+    if (!editingMaterial) {
+      next.file = validateFile(matFile, { maxSizeMB: 25, allowedExtensions: MATERIAL_ACCEPT });
+    }
+    return next;
+  };
+
   const handleSaveMaterial = async () => {
+    const nextErrors = validateMaterialForm();
+    setMatErrors(nextErrors);
+    if (hasErrors(nextErrors as Record<string, string>)) return;
+
+    setMatSaving(true);
     try {
       if (editingMaterial) {
         await api.put(`/materials/${editingMaterial._id}`, {
-          title: matTitle,
-          description: matDescription,
+          title: matTitle.trim(),
+          description: matDescription.trim(),
         });
       } else {
-        if (!matFile) {
-          alert('Please select a file to upload.');
-          return;
-        }
         const formData = new FormData();
-        formData.append('title', matTitle);
-        formData.append('description', matDescription);
-        formData.append('file', matFile);
+        formData.append('title', matTitle.trim());
+        formData.append('description', matDescription.trim());
+        formData.append('file', matFile as File);
         await api.post(`/materials/course/${id}`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
@@ -145,17 +193,29 @@ export function AdminCourseDetailPage() {
       fetchData();
     } catch (e: any) {
       console.error(e);
-      alert('Error saving material: ' + (e.response?.data?.message || e.message));
+      setMatErrors({ form: extractApiError(e, 'Failed to save material. Please try again.') });
+    } finally {
+      setMatSaving(false);
     }
   };
 
-  const handleDeleteMaterial = async (matId: string) => {
-    if (!window.confirm('Are you sure you want to delete this material?')) return;
+  const openDeleteMaterial = (mat: any) => {
+    setMaterialToDelete(mat);
+    setDeleteMaterialModalOpen(true);
+  };
+
+  const confirmDeleteMaterial = async () => {
+    if (!materialToDelete) return;
+    setMaterialDeleting(true);
     try {
-      await api.delete(`/materials/${matId}`);
+      await api.delete(`/materials/${materialToDelete._id}`);
+      setDeleteMaterialModalOpen(false);
+      setMaterialToDelete(null);
       fetchData();
     } catch (e) {
       console.error(e);
+    } finally {
+      setMaterialDeleting(false);
     }
   };
 
@@ -165,6 +225,7 @@ export function AdminCourseDetailPage() {
     setAssignTitle('');
     setAssignDescription('');
     setAssignDueDate('');
+    setAssignErrors({});
     setAssignmentModalOpen(true);
   };
 
@@ -173,38 +234,82 @@ export function AdminCourseDetailPage() {
     setAssignTitle(a.title);
     setAssignDescription(a.description || '');
     setAssignDueDate(a.dueDate ? new Date(a.dueDate).toISOString().split('T')[0] : '');
+    setAssignErrors({});
     setAssignmentModalOpen(true);
   };
 
+  const validateAssignForm = (): FieldErrors<AssignFormField> => {
+    const next: FieldErrors<AssignFormField> = {};
+    next.title =
+      validateRequired(assignTitle, 'Title') ||
+      validateLength(assignTitle, 'Title', 3, 200);
+    if (assignDescription && assignDescription.trim().length > 2000) {
+      next.description = 'Description must be at most 2000 characters.';
+    }
+    if (!editingAssignment) {
+      next.dueDate = validateFutureOrTodayDate(assignDueDate, 'Due date');
+    } else if (assignDueDate) {
+      const originalISO = editingAssignment.dueDate
+        ? new Date(editingAssignment.dueDate).toISOString().split('T')[0]
+        : '';
+      if (assignDueDate !== originalISO) {
+        next.dueDate = validateFutureOrTodayDate(assignDueDate, 'Due date');
+      }
+    } else {
+      next.dueDate = 'Due date is required.';
+    }
+    return next;
+  };
+
   const handleSaveAssignment = async () => {
+    const nextErrors = validateAssignForm();
+    setAssignErrors(nextErrors);
+    if (hasErrors(nextErrors as Record<string, string>)) return;
+
+    setAssignSaving(true);
     try {
       if (editingAssignment) {
-        const payload: any = { title: assignTitle, description: assignDescription };
-        if (assignDueDate) payload.dueDate = new Date(assignDueDate).toISOString();
+        const payload: any = {
+          title: assignTitle.trim(),
+          description: assignDescription.trim(),
+        };
+        if (assignDueDate) payload.dueDate = endOfDayIso(assignDueDate);
         await api.put(`/assignments/${editingAssignment._id}`, payload);
       } else {
         await api.post(`/assignments/course/${id}`, {
-          title: assignTitle,
-          description: assignDescription,
+          title: assignTitle.trim(),
+          description: assignDescription.trim(),
           course: id,
-          dueDate: new Date(assignDueDate).toISOString(),
+          dueDate: endOfDayIso(assignDueDate),
         });
       }
       setAssignmentModalOpen(false);
       fetchData();
     } catch (e: any) {
       console.error(e);
-      alert('Error saving assignment: ' + (e.response?.data?.message || e.message));
+      setAssignErrors({ form: extractApiError(e, 'Failed to save assignment. Please try again.') });
+    } finally {
+      setAssignSaving(false);
     }
   };
 
-  const handleDeleteAssignment = async (assignId: string) => {
-    if (!window.confirm('Are you sure you want to delete this assignment?')) return;
+  const openDeleteAssignment = (a: any) => {
+    setAssignmentToDelete(a);
+    setDeleteAssignmentModalOpen(true);
+  };
+
+  const confirmDeleteAssignment = async () => {
+    if (!assignmentToDelete) return;
+    setAssignmentDeleting(true);
     try {
-      await api.delete(`/assignments/${assignId}`);
+      await api.delete(`/assignments/${assignmentToDelete._id}`);
+      setDeleteAssignmentModalOpen(false);
+      setAssignmentToDelete(null);
       fetchData();
     } catch (e) {
       console.error(e);
+    } finally {
+      setAssignmentDeleting(false);
     }
   };
 
@@ -232,19 +337,19 @@ export function AdminCourseDetailPage() {
   };
 
   if (loading) return (
-    <Layout role="admin">
+    <Layout role="admin" pageTitle="Course Details">
       <div className="p-8 text-gray-500">Loading course details...</div>
     </Layout>
   );
 
   if (!course) return (
-    <Layout role="admin">
+    <Layout role="admin" pageTitle="Course Details">
       <div className="p-8 text-red-500">Course not found.</div>
     </Layout>
   );
 
   return (
-    <Layout role="admin">
+    <Layout role="admin" pageTitle={course.title}>
       {/* Header */}
       <div className="mb-6">
         <button
@@ -487,7 +592,7 @@ export function AdminCourseDetailPage() {
                           Edit
                         </Button>
                         <Button size="sm" variant="danger" icon={<Trash2 className="w-4 h-4" />}
-                          onClick={() => handleDeleteMaterial(item._id)}>
+                          onClick={() => openDeleteMaterial(item)}>
                           Delete
                         </Button>
                       </div>
@@ -553,7 +658,7 @@ export function AdminCourseDetailPage() {
                     Edit
                   </Button>
                   <Button size="sm" variant="danger" icon={<Trash2 className="w-4 h-4" />}
-                    onClick={() => handleDeleteAssignment(item._id)}>
+                    onClick={() => openDeleteAssignment(item)}>
                     Delete
                   </Button>
                 </div>
@@ -644,27 +749,51 @@ export function AdminCourseDetailPage() {
         onClose={() => setMaterialModalOpen(false)}
         title={editingMaterial ? 'Edit Material' : 'Upload Material'}
       >
-        <form className="space-y-4">
-          <Input label="Title" placeholder="e.g. Chapter 1 Notes" value={matTitle}
-            onChange={e => setMatTitle(e.target.value)} />
+        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSaveMaterial(); }} noValidate>
+          {matErrors.form && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              {matErrors.form}
+            </div>
+          )}
+          <Input
+            label="Title"
+            placeholder="e.g. Chapter 1 Notes"
+            value={matTitle}
+            onChange={e => { setMatTitle(e.target.value); if (matErrors.title) setMatErrors(prev => ({ ...prev, title: '' })); }}
+            error={matErrors.title}
+            maxLength={200}
+            required
+          />
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">Description</label>
-            <textarea className="w-full rounded-lg border border-gray-300 p-2.5 h-20"
-              placeholder="Enter description (optional)" value={matDescription}
-              onChange={e => setMatDescription(e.target.value)} />
+            <textarea
+              className={`w-full rounded-lg border p-2.5 h-20 ${matErrors.description ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : 'border-gray-300'}`}
+              placeholder="Enter description (optional)"
+              value={matDescription}
+              maxLength={1000}
+              onChange={e => { setMatDescription(e.target.value); if (matErrors.description) setMatErrors(prev => ({ ...prev, description: '' })); }}
+            />
+            {matErrors.description && <p className="mt-1 text-sm text-red-500">{matErrors.description}</p>}
+            <p className="text-xs text-gray-400">{matDescription.length}/1000 characters</p>
           </div>
           {!editingMaterial && (
-            <FileUpload
-              onFileSelect={file => setMatFile(file)}
-              accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.png"
-              label="File"
-            />
+            <div>
+              <FileUpload
+                onFileSelect={file => { setMatFile(file); if (matErrors.file) setMatErrors(prev => ({ ...prev, file: '' })); }}
+                accept={MATERIAL_ACCEPT.join(',')}
+                label="File"
+              />
+              {matErrors.file && <p className="mt-1 text-sm text-red-500">{matErrors.file}</p>}
+              <p className="mt-1 text-xs text-gray-500">
+                Accepted: {MATERIAL_ACCEPT.join(', ')} &bull; Max size: 25 MB
+              </p>
+            </div>
           )}
           <div className="flex justify-end space-x-3 mt-6">
-            <Button variant="secondary" onClick={() => setMaterialModalOpen(false)} type="button">
+            <Button variant="secondary" onClick={() => setMaterialModalOpen(false)} type="button" disabled={matSaving}>
               Cancel
             </Button>
-            <Button type="button" onClick={handleSaveMaterial}>
+            <Button type="submit" isLoading={matSaving} disabled={matSaving}>
               {editingMaterial ? 'Update Material' : 'Upload Material'}
             </Button>
           </div>
@@ -677,22 +806,47 @@ export function AdminCourseDetailPage() {
         onClose={() => setAssignmentModalOpen(false)}
         title={editingAssignment ? 'Edit Assignment' : 'Create Assignment'}
       >
-        <form className="space-y-4">
-          <Input label="Title" placeholder="e.g. Assignment 1 - React Basics" value={assignTitle}
-            onChange={e => setAssignTitle(e.target.value)} />
+        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSaveAssignment(); }} noValidate>
+          {assignErrors.form && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              {assignErrors.form}
+            </div>
+          )}
+          <Input
+            label="Title"
+            placeholder="e.g. Assignment 1 - React Basics"
+            value={assignTitle}
+            onChange={e => { setAssignTitle(e.target.value); if (assignErrors.title) setAssignErrors(prev => ({ ...prev, title: '' })); }}
+            error={assignErrors.title}
+            maxLength={200}
+            required
+          />
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700">Description</label>
-            <textarea className="w-full rounded-lg border border-gray-300 p-2.5 h-20"
-              placeholder="Enter assignment description (optional)" value={assignDescription}
-              onChange={e => setAssignDescription(e.target.value)} />
+            <textarea
+              className={`w-full rounded-lg border p-2.5 h-20 ${assignErrors.description ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : 'border-gray-300'}`}
+              placeholder="Enter assignment description (optional)"
+              value={assignDescription}
+              maxLength={2000}
+              onChange={e => { setAssignDescription(e.target.value); if (assignErrors.description) setAssignErrors(prev => ({ ...prev, description: '' })); }}
+            />
+            {assignErrors.description && <p className="mt-1 text-sm text-red-500">{assignErrors.description}</p>}
+            <p className="text-xs text-gray-400">{assignDescription.length}/2000 characters</p>
           </div>
-          <Input label="Due Date" type="date" value={assignDueDate}
-            onChange={e => setAssignDueDate(e.target.value)} />
+          <Input
+            label="Due Date"
+            type="date"
+            value={assignDueDate}
+            min={minAssignDate}
+            onChange={e => { setAssignDueDate(e.target.value); if (assignErrors.dueDate) setAssignErrors(prev => ({ ...prev, dueDate: '' })); }}
+            error={assignErrors.dueDate}
+            required
+          />
           <div className="flex justify-end space-x-3 mt-6">
-            <Button variant="secondary" onClick={() => setAssignmentModalOpen(false)} type="button">
+            <Button variant="secondary" onClick={() => setAssignmentModalOpen(false)} type="button" disabled={assignSaving}>
               Cancel
             </Button>
-            <Button type="button" onClick={handleSaveAssignment}>
+            <Button type="submit" isLoading={assignSaving} disabled={assignSaving}>
               {editingAssignment ? 'Update Assignment' : 'Create Assignment'}
             </Button>
           </div>
@@ -761,6 +915,148 @@ export function AdminCourseDetailPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Delete Material Confirmation Modal */}
+      <Modal
+        isOpen={deleteMaterialModalOpen}
+        onClose={() => { setDeleteMaterialModalOpen(false); setMaterialToDelete(null); }}
+        title="Delete Material"
+      >
+        {materialToDelete && (
+          <div className="space-y-5">
+            <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-red-800">This action cannot be undone.</p>
+                <p className="text-sm text-red-600 mt-1">
+                  Deleting this material will permanently remove the file and its record for all enrolled students.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-gray-900">Material Details</h4>
+              <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Title</span>
+                  <span className="font-medium text-gray-800 text-right max-w-[60%] truncate">{materialToDelete.title}</span>
+                </div>
+                {materialToDelete.description && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Description</span>
+                    <span className="font-medium text-gray-800 text-right max-w-[60%] truncate">{materialToDelete.description}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Uploaded</span>
+                  <span className="font-medium text-gray-800">
+                    {materialToDelete.createdAt ? new Date(materialToDelete.createdAt).toLocaleDateString() : '—'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-2">
+              <Button
+                variant="secondary"
+                onClick={() => { setDeleteMaterialModalOpen(false); setMaterialToDelete(null); }}
+                disabled={materialDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                icon={<Trash2 className="w-4 h-4" />}
+                onClick={confirmDeleteMaterial}
+                isLoading={materialDeleting}
+                disabled={materialDeleting}
+              >
+                Delete Material
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete Assignment Confirmation Modal */}
+      <Modal
+        isOpen={deleteAssignmentModalOpen}
+        onClose={() => { setDeleteAssignmentModalOpen(false); setAssignmentToDelete(null); }}
+        title="Delete Assignment"
+      >
+        {assignmentToDelete && (() => {
+          const subs = submissionsByAssignment[assignmentToDelete._id] || [];
+          const evaluated = subs.filter((s: any) => s.status === 'evaluated').length;
+          return (
+            <div className="space-y-5">
+              <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
+                <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-red-800">This action cannot be undone.</p>
+                  <p className="text-sm text-red-600 mt-1">
+                    Deleting this assignment will also remove all associated submissions and evaluations.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-gray-900">Assignment Details</h4>
+                <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Title</span>
+                    <span className="font-medium text-gray-800 text-right max-w-[60%] truncate">{assignmentToDelete.title}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Due Date</span>
+                    <span className="font-medium text-gray-800">
+                      {assignmentToDelete.dueDate ? new Date(assignmentToDelete.dueDate).toLocaleDateString() : '—'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Status</span>
+                    <Badge variant={new Date() > new Date(assignmentToDelete.dueDate) ? 'danger' : 'success'}>
+                      {new Date() > new Date(assignmentToDelete.dueDate) ? 'Past Due' : 'Active'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="text-sm font-semibold text-gray-900">Data that will be lost</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-gray-50 rounded-xl p-3 text-center">
+                    <p className="text-xl font-bold text-gray-900">{subs.length}</p>
+                    <p className="text-xs text-gray-500">Submissions</p>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-3 text-center">
+                    <p className="text-xl font-bold text-gray-900">{evaluated}</p>
+                    <p className="text-xs text-gray-500">Evaluated</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => { setDeleteAssignmentModalOpen(false); setAssignmentToDelete(null); }}
+                  disabled={assignmentDeleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="danger"
+                  icon={<Trash2 className="w-4 h-4" />}
+                  onClick={confirmDeleteAssignment}
+                  isLoading={assignmentDeleting}
+                  disabled={assignmentDeleting}
+                >
+                  Delete Assignment
+                </Button>
+              </div>
+            </div>
+          );
+        })()}
       </Modal>
     </Layout>
   );

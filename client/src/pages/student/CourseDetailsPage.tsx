@@ -9,6 +9,7 @@ import { useParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import api from "../../services/api";
 import { FileUpload } from "../../components/ui/FileUpload";
+import { isPastDueDate } from "../../utils/validation";
 
 // --- Helper Functions & Constants ---
 const THEME_ORDER = ["red", "green", "blue"] as const;
@@ -316,7 +317,7 @@ export function CourseDetailsPage() {
                 submission.status === "Evaluated"
                 ? "Evaluated"
                 : "Submitted";
-        if (new Date() > new Date(item.dueDate)) return "Failed";
+        if (isPastDueDate(item.dueDate)) return "Failed";
         return "Pending";
     };
 

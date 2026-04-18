@@ -9,7 +9,7 @@ import swagger from "./src/common/config/swagger.js";
 import "./seeder/index.js";
 import helmet from "helmet";
 import cors from "cors";
-import rateLimit from "express-rate-limit";
+// import rateLimit from "express-rate-limit";
 
 // Suppress MaxListenersExceededWarning during development
 if (process.env.NODE_ENV !== "production") {
@@ -21,8 +21,8 @@ const PORT = process.env.PORT || 5001;
 mongoConnection();
 
 const __dirname = import.meta.dirname;
-const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000);
-const RATE_LIMIT_MAX_REQUESTS = Number(process.env.RATE_LIMIT_MAX_REQUESTS || 5000);
+// const RATE_LIMIT_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000);
+// const RATE_LIMIT_MAX_REQUESTS = Number(process.env.RATE_LIMIT_MAX_REQUESTS || 5000);
 
 // Required when running behind a proxy/load balancer so IP detection is correct.
 app.set("trust proxy", 1);
@@ -35,17 +35,17 @@ app.use(cors({
     allowedHeaders: ["Content-Type", "Authorization"],
 }));
 
-// Rate limiting (Global, but we could make a specific one for auth)
-const limiter = rateLimit({
-    windowMs: RATE_LIMIT_WINDOW_MS,
-    max: RATE_LIMIT_MAX_REQUESTS,
-    message: `Too many requests from this IP, please try again after ${Math.round(
-        RATE_LIMIT_WINDOW_MS / 60000
-    )} minutes`,
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-app.use(limiter);
+// Rate limiting disabled.
+// const limiter = rateLimit({
+//     windowMs: RATE_LIMIT_WINDOW_MS,
+//     max: RATE_LIMIT_MAX_REQUESTS,
+//     message: `Too many requests from this IP, please try again after ${Math.round(
+//         RATE_LIMIT_WINDOW_MS / 60000
+//     )} minutes`,
+//     standardHeaders: true,
+//     legacyHeaders: false,
+// });
+// app.use(limiter);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

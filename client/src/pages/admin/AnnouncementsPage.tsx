@@ -7,6 +7,16 @@ import { Input } from '../../components/ui/Input';
 import { Badge } from '../../components/ui/Badge';
 import { Plus, Trash2, Edit2, Calendar } from 'lucide-react';
 import api from '../../services/api';
+import {
+  validateRequired,
+  validateLength,
+  extractApiError,
+  hasErrors,
+  FieldErrors,
+} from '../../utils/validation';
+
+type AnnouncementFormField = 'title' | 'message' | 'type' | 'form';
+const ALLOWED_TYPES = ['Academic', 'Event', 'System', 'General'] as const;
 
 export function AnnouncementsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -17,6 +27,8 @@ export function AnnouncementsPage() {
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [type, setType] = useState('General');
+  const [errors, setErrors] = useState<FieldErrors<AnnouncementFormField>>({});
+  const [saving, setSaving] = useState(false);
 
   const fetchAnnouncements = async () => {
     setLoading(true);
@@ -38,6 +50,7 @@ export function AnnouncementsPage() {
     setTitle('');
     setMessage('');
     setType('General');
+    setErrors({});
     setIsModalOpen(true);
   };
 
@@ -46,21 +59,44 @@ export function AnnouncementsPage() {
     setTitle(announcement.title);
     setMessage(announcement.message || '');
     setType(announcement.type || 'General');
+    setErrors({});
     setIsModalOpen(true);
   };
 
+  const validateAnnouncementForm = (): FieldErrors<AnnouncementFormField> => {
+    const next: FieldErrors<AnnouncementFormField> = {};
+    next.title =
+      validateRequired(title, 'Title') ||
+      validateLength(title, 'Title', 3, 200);
+    next.message =
+      validateRequired(message, 'Message') ||
+      validateLength(message, 'Message', 10, 2000);
+    if (!ALLOWED_TYPES.includes(type as typeof ALLOWED_TYPES[number])) {
+      next.type = 'Please select a valid announcement type.';
+    }
+    return next;
+  };
+
   const handleSave = async () => {
+    const nextErrors = validateAnnouncementForm();
+    setErrors(nextErrors);
+    if (hasErrors(nextErrors as Record<string, string>)) return;
+
+    setSaving(true);
     try {
+      const payload = { title: title.trim(), message: message.trim(), type };
       if (selectedAnnouncement) {
-        await api.put(`/announcements/${selectedAnnouncement._id}`, { title, message, type });
+        await api.put(`/announcements/${selectedAnnouncement._id}`, payload);
       } else {
-        await api.post('/announcements', { title, message, type });
+        await api.post('/announcements', payload);
       }
       fetchAnnouncements();
       setIsModalOpen(false);
     } catch (e: any) {
       console.error("Error saving announcement", e);
-      alert('Error: ' + (e.response?.data?.message || e.message));
+      setErrors({ form: extractApiError(e, 'Failed to save announcement. Please try again.') });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -120,26 +156,52 @@ export function AnnouncementsPage() {
     </div>
 
     <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={selectedAnnouncement ? "Edit Announcement" : "Create Announcement"}>
-      <form className="space-y-4">
-        <Input label="Title" placeholder="e.g. Exam Schedule Released" value={title} onChange={e => setTitle(e.target.value)} />
+      <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSave(); }} noValidate>
+        {errors.form && (
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {errors.form}
+          </div>
+        )}
+        <Input
+          label="Title"
+          placeholder="e.g. Exam Schedule Released"
+          value={title}
+          onChange={e => { setTitle(e.target.value); if (errors.title) setErrors(prev => ({ ...prev, title: '' })); }}
+          error={errors.title}
+          maxLength={200}
+          required
+        />
         <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-700">Message</label>
-          <textarea className="w-full rounded-lg border border-gray-300 p-2.5 h-32" placeholder="Enter announcement details..." value={message} onChange={e => setMessage(e.target.value)} />
+          <label className="text-sm font-medium text-gray-700">Message <span className="text-red-500">*</span></label>
+          <textarea
+            className={`w-full rounded-lg border p-2.5 h-32 ${errors.message ? 'border-red-500 focus:border-red-500 focus:ring-red-200' : 'border-gray-300'}`}
+            placeholder="Enter announcement details (minimum 10 characters)..."
+            value={message}
+            maxLength={2000}
+            onChange={e => { setMessage(e.target.value); if (errors.message) setErrors(prev => ({ ...prev, message: '' })); }}
+          />
+          {errors.message && <p className="mt-1 text-sm text-red-500">{errors.message}</p>}
+          <p className="text-xs text-gray-400">{message.length}/2000 characters</p>
         </div>
         <div className="space-y-2">
           <label className="text-sm font-medium text-gray-700">Type</label>
-          <select className="w-full rounded-lg border border-gray-300 p-2.5" value={type} onChange={e => setType(e.target.value)}>
+          <select
+            className={`w-full rounded-lg border p-2.5 ${errors.type ? 'border-red-500' : 'border-gray-300'}`}
+            value={type}
+            onChange={e => { setType(e.target.value); if (errors.type) setErrors(prev => ({ ...prev, type: '' })); }}
+          >
             <option value="Academic">Academic</option>
             <option value="Event">Event</option>
             <option value="System">System</option>
             <option value="General">General</option>
           </select>
+          {errors.type && <p className="mt-1 text-sm text-red-500">{errors.type}</p>}
         </div>
         <div className="flex justify-end space-x-3 mt-6">
-          <Button variant="secondary" onClick={() => setIsModalOpen(false)} type="button">
+          <Button variant="secondary" onClick={() => setIsModalOpen(false)} type="button" disabled={saving}>
             Cancel
           </Button>
-          <Button type="button" onClick={handleSave}>
+          <Button type="submit" isLoading={saving} disabled={saving}>
             {selectedAnnouncement ? "Update Broadcast" : "Broadcast"}
           </Button>
         </div>
